@@ -1,0 +1,7 @@
+build/*
+dist/*
+tmp/*
+node_modules/*
+src/**~
+*~
+.idea
