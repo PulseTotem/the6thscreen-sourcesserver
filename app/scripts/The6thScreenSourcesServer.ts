@@ -6,7 +6,7 @@
 /// <reference path="../../libsdef/express.d.ts" />
 /// <reference path="../../libsdef/socket.io-0.9.10.d.ts" />
 
-/// <reference path="./zonesmanager/ZonesManager.ts" />
+/// <reference path="./zonemanager/ZoneManager.ts" />
 /// <reference path="./core/Logger.ts" />
 
 var http = require("http");
@@ -22,12 +22,28 @@ var sio = require("socket.io");
 class The6thScreenSourcesServer {
 
     /**
+     * List of ZoneManagers.
+     *
+     * @property _zoneManagers
+     * @type Array<ZoneManager>
+     */
+    private _zoneManagers: Array<ZoneManager>;
+
+    /**
+     * @constructor
+     */
+    constructor() {
+        this._zoneManagers = new Array<ZoneManager>();
+    }
+
+    /**
      * Method to run the server.
      *
      * @method run
      */
     run() {
-        var listeningPort = process.env.PORT || 4000;
+        var self = this;
+        var listeningPort = process.env.PORT || 5000;
 
         var app = express();
         var httpServer = http.createServer(app);
@@ -37,25 +53,48 @@ class The6thScreenSourcesServer {
             res.send('<h1>Are you lost ? * <--- You are here !</h1>');
         });
 
-        io.on('connection', function(socket){
-            Logger.info("New The 6th Screen Client Connection");
+        var zoneNamespace = io.of("/zones");
 
-            var zonesManager = new ZonesManager();
+        zoneNamespace.on('connection', function(socket){
+            Logger.info("New The 6th Screen Zone Connection");
 
-            socket.on('zones/newZone', function(zoneDescription) {
-                Logger.info("zones/newZone : " + JSON.stringify(zoneDescription));
-                //zoneDescription - The new zone description : {name : string}
-                zonesManager.newZone(zoneDescription.name, socket);
+            socket.on('newZone', function(zoneDescription) {
+                Logger.info("newZone : " + JSON.stringify(zoneDescription));
+                //zoneDescription - The new zone description : {id : number}
+                if(self._retrieveZoneManager(zoneDescription.id) == null) {
+                    var zoneManager = new ZoneManager(zoneDescription.id, socket);
+                    self._zoneManagers.push(zoneManager);
+                } else {
+                    Logger.warn("newZone - A Zone with same id already exist. Corresponding ZoneManager is not created.");
+                }
             });
 
             socket.on('disconnect', function(){
-                Logger.info("The 6th Screen Client disconnected.");
+                Logger.info("The 6th Screen Zone disconnected.");
             });
         });
 
         httpServer.listen(listeningPort, function(){
             Logger.info("The 6th Screen Sources' Server listening on *:" + listeningPort);
         });
+    }
+
+    /**
+     * Method to retrieve a Zone from this name.
+     *
+     * @method _retrieveZoneManager
+     * @param {number} zoneId - The zone's id
+     * @returns {ZoneManager} The ZoneManager object corresponding to zone's id, null if not found.
+     */
+    private _retrieveZoneManager(zoneId : number) : ZoneManager {
+        for(var i in this._zoneManagers) {
+            var zoneManager = this._zoneManagers[i];
+            if(zoneManager.getZoneId() == zoneId) {
+                return zoneManager;
+            }
+        }
+
+        return null;
     }
 }
 

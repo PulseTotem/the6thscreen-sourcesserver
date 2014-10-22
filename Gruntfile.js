@@ -40,7 +40,7 @@ module.exports = function (grunt) {
 
         express: {
             options: {
-                port: 4000
+                port: 5000
             },
             build: {
                 options: {
