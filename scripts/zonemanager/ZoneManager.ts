@@ -2,9 +2,9 @@
  * @author Christian Brel <christian@the6thscreen.fr, ch.brel@gmail.com>
  */
 
-/// <reference path="../../../libsdef/socket.io-0.9.10.d.ts" />
+/// <reference path="../../t6s-core/core-backend/libsdef/socket.io-0.9.10.d.ts" />
 
-/// <reference path="../core/Logger.ts" />
+/// <reference path="../../t6s-core/core-backend/scripts/Logger.ts" />
 /// <reference path="./Call.ts" />
 
 /**
@@ -52,11 +52,8 @@ class ZoneManager {
     /**
      * @constructor
      */
-    constructor(id : number = -2, socket : SocketNamespace = null, backendSocket : any = null) {
+    constructor(id : number, socket : SocketNamespace, backendSocket : any) {
         Logger.debug("New Zone Manager");
-        Logger.debug(id);
-        Logger.debug(socket);
-        Logger.debug(backendSocket);
 
         this._zoneId = id;
         this._zoneSocket = socket;
@@ -84,9 +81,9 @@ class ZoneManager {
     private _listen() {
         var self = this;
 
-        Logger.debug("Listen");
+        Logger.debug("Listen : zones/" + this.getZoneId() + "/newCall");
 
-        this._zoneSocket.on("zones/" + this.getZoneId + "/newCall", function(callDescription) {
+        this._zoneSocket.on("zones/" + this.getZoneId() + "/newCall", function(callDescription) {
             //callDescription - The call description : {id : number}
             Logger.debug("newCall");
             Logger.debug(callDescription);

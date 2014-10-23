@@ -2,9 +2,9 @@
  * @author Christian Brel <christian@the6thscreen.fr, ch.brel@gmail.com>
  */
 
-/// <reference path="../../../libsdef/socket.io-0.9.10.d.ts" />
+/// <reference path="../../t6s-core/core-backend/libsdef/socket.io-0.9.10.d.ts" />
 
-/// <reference path="../core/Logger.ts" />
+/// <reference path="../../t6s-core/core-backend/scripts/Logger.ts" />
 /// <reference path="../zonemanager/ZoneManager.ts" />
 
 /**

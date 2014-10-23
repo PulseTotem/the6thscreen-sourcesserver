@@ -2,14 +2,15 @@
  * @author Christian Brel <christian@the6thscreen.fr, ch.brel@gmail.com>
  */
 
-/// <reference path="../../libsdef/node.d.ts" />
-/// <reference path="../../libsdef/express.d.ts" />
-/// <reference path="../../libsdef/socket.io-0.9.10.d.ts" />
-/// <reference path="../../libsdef/socket.io-client.d.ts" />
+/// <reference path="../t6s-core/core-backend/libsdef/node.d.ts" />
+/// <reference path="../t6s-core/core-backend/libsdef/express.d.ts" />
+/// <reference path="../t6s-core/core-backend/libsdef/socket.io-0.9.10.d.ts" />
+/// <reference path="../libsdef/socket.io-client.d.ts" />
 
 /// <reference path="./socketmanager/ConnectionManager.ts" />
 /// <reference path="./zonemanager/ZoneManager.ts" />
-/// <reference path="./core/Logger.ts" />
+/// <reference path="../t6s-core/core-backend/scripts/Logger.ts" />
+/// <reference path="../t6s-core/core-backend/scripts/LoggerLevel.ts" />
 
 var http = require("http");
 var express = require("express");
@@ -160,6 +161,35 @@ class The6thScreenSourcesServer {
         return null;
     }
 }
+
+var logLevel = LoggerLevel.Error;
+
+if(process.argv.length > 2) {
+    var param = process.argv[2];
+    var keyVal = param.split("=");
+    if(keyVal.length > 1) {
+        if (keyVal[0] == "loglevel") {
+            switch(keyVal[1]) {
+                case "error" :
+                    logLevel = LoggerLevel.Error;
+                    break;
+                case "warning" :
+                    logLevel = LoggerLevel.Warning;
+                    break;
+                case "info" :
+                    logLevel = LoggerLevel.Info;
+                    break;
+                case "debug" :
+                    logLevel = LoggerLevel.Debug;
+                    break;
+                default :
+                    logLevel = LoggerLevel.Error;
+            }
+        }
+    }
+}
+
+Logger.setLevel(logLevel);
 
 var serverInstance = new The6thScreenSourcesServer();
 serverInstance.run();

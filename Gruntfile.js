@@ -6,11 +6,31 @@ module.exports = function (grunt) {
     grunt.loadNpmTasks('grunt-contrib-clean');
     grunt.loadNpmTasks('grunt-contrib-watch');
     grunt.loadNpmTasks('grunt-typescript');
+    grunt.loadNpmTasks('grunt-contrib-symlink');
 
     // tasks
     grunt.initConfig({
 
+        coreReposConfig : grunt.file.readJSON('core-repos-config.json'),
 
+// ---------------------------------------------
+//                               configure tasks
+// ---------------------------------------------
+        symlink: {
+            // Enable overwrite to delete symlinks before recreating them
+            options: {
+                overwrite: false
+            },
+            // The "build/target.txt" symlink will be created and linked to
+            // "source/target.txt". It should appear like this in a file listing:
+            // build/target.txt -> ../source/target.txt
+
+            coreBackend: {
+                src: '<%= coreReposConfig.coreBackendRepoPath %>',
+                dest: 't6s-core/core-backend'
+            }
+        },
+// ---------------------------------------------
 
 // ---------------------------------------------
 //                          build and dist tasks
@@ -18,22 +38,22 @@ module.exports = function (grunt) {
         typescript: {
             build: {
                 src: [
-                    'app/scripts/The6thScreenSourcesServer.ts'
+                    'scripts/The6thScreenSourcesServer.ts'
                 ],
                 dest: 'build/js/The6thScreenSourcesServer.js',
                 options: {
                     module: 'commonjs',
-                    basePath: 'app/scripts'
+                    basePath: 'scripts'
                 }
             },
             dist: {
                 src: [
-                    'app/scripts/The6thScreenSourcesServer.ts'
+                    'scripts/The6thScreenSourcesServer.ts'
                 ],
                 dest: 'dist/js/The6thScreenSourcesServer.js',
                 options: {
                     module: 'commonjs',
-                    basePath: 'app/scripts'
+                    basePath: 'scripts'
                 }
             }
         },
@@ -44,12 +64,14 @@ module.exports = function (grunt) {
             },
             build: {
                 options: {
-                    script: 'build/js/The6thScreenSourcesServer.js'
+                    script: 'build/js/The6thScreenSourcesServer.js',
+                    args: ["loglevel=debug"]
                 }
             },
             dist: {
                 options: {
                     script: 'dist/js/The6thScreenSourcesServer.js',
+                    args: ["loglevel=error"],
                     node_env: 'production'
                 }
             }
@@ -73,7 +95,7 @@ module.exports = function (grunt) {
             },
 
             developServer: {
-                files: ['app/scripts/**/*.ts'],
+                files: ['scripts/**/*.ts'],
                 tasks: ['typescript:build']
             }
         },
@@ -91,6 +113,8 @@ module.exports = function (grunt) {
 
     // register tasks
     grunt.registerTask('default', ['build']);
+
+    grunt.registerTask('init', ['symlink']);
 
     grunt.registerTask('build', function () {
         grunt.task.run(['clean:build']);
