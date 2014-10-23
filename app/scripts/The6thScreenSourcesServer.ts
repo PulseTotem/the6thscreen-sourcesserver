@@ -7,6 +7,7 @@
 /// <reference path="../../libsdef/socket.io-0.9.10.d.ts" />
 /// <reference path="../../libsdef/socket.io-client.d.ts" />
 
+/// <reference path="./socketmanager/ConnectionManager.ts" />
 /// <reference path="./zonemanager/ZoneManager.ts" />
 /// <reference path="./core/Logger.ts" />
 
@@ -24,12 +25,12 @@ var socketIOClient = require('socket.io-client');
 class The6thScreenSourcesServer {
 
     /**
-     * List of ZoneManagers.
+     * List of ConnectionManager.
      *
-     * @property _zoneManagers
-     * @type Array<ZoneManager>
+     * @property _connectionManagers
+     * @type Array<ConnectionManager>
      */
-    private _zoneManagers: Array<ZoneManager>;
+    private _connectionManagers: Array<ConnectionManager>;
 
     /**
      * Backend socket.
@@ -44,7 +45,7 @@ class The6thScreenSourcesServer {
      * @constructor
      */
     constructor() {
-        this._zoneManagers = new Array<ZoneManager>();
+        this._connectionManagers = new Array<ConnectionManager>();
     }
 
     /**
@@ -70,22 +71,26 @@ class The6thScreenSourcesServer {
         var zoneNamespace = io.of("/zones");
 
         zoneNamespace.on('connection', function(socket){
-            Logger.info("New The 6th Screen Zone Connection");
+            var connectionManager : ConnectionManager = new ConnectionManager(socket.id);
+            self._connectionManagers[socket.id] = connectionManager;
+
+            Logger.info("New The 6th Screen Zone Connection : " + socket.id);
 
             socket.on('newZone', function(zoneDescription) {
                 Logger.info("newZone : " + JSON.stringify(zoneDescription));
                 //zoneDescription - The new zone description : {id : number}
-                if(self._retrieveZoneManager(zoneDescription.id) == null) {
-                    Logger.debug("retrieveZone OK");
-                    var zoneManager = new ZoneManager(zoneDescription.id, socket, self._backendSocket);
-                    self._zoneManagers.push(zoneManager);
+                if(connectionManager.retrieveZoneManager(zoneDescription.id) == null) {
+                    Logger.debug("ZoneManager creation with ZoneId : " + zoneDescription.id);
+                    var zoneManager : ZoneManager = new ZoneManager(zoneDescription.id, socket, self._backendSocket);
+                    connectionManager.addZoneManager(zoneManager);
                 } else {
                     Logger.warn("newZone - A Zone with same id already exist. Corresponding ZoneManager is not created.");
                 }
             });
 
             socket.on('disconnect', function(){
-                Logger.info("The 6th Screen Zone disconnected.");
+                delete(self._connectionManagers[socket.id]);
+                Logger.info("The 6th Screen Zone disconnected : " + socket.id);
             });
         });
 
@@ -135,19 +140,20 @@ class The6thScreenSourcesServer {
     }
 
     /**
-     * Method to retrieve a Zone from this name.
+     * Method to retrieve a ConnectionManager from this socketId.
      *
-     * @method _retrieveZoneManager
-     * @param {number} zoneId - The zone's id
-     * @returns {ZoneManager} The ZoneManager object corresponding to zone's id, null if not found.
+     * @method _retrieveConnectionManager
+     * @private
+     * @param {string} socketId - The zone's id
+     * @returns {ConnectionManager} The ConnectionManager object corresponding to socket's id, null if not found.
      */
-    private _retrieveZoneManager(zoneId : number) : ZoneManager {
-        Logger.debug("retrieving Zone");
-        for(var i in this._zoneManagers) {
-            var zoneManager = this._zoneManagers[i];
-            if(zoneManager.getZoneId() == zoneId) {
-                Logger.debug("ZoneManager found and return");
-                return zoneManager;
+    private _retrieveConnectionManager(socketId : string) : ConnectionManager {
+        Logger.debug("retrieving ConnectionManager");
+        for(var i in this._connectionManagers) {
+            var connectionManager = this._connectionManagers[i];
+            if(connectionManager.getSocketId() == socketId) {
+                Logger.debug("ConnectionManager found and return");
+                return connectionManager;
             }
         }
         Logger.debug("Return null!");

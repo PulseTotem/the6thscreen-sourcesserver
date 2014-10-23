@@ -52,7 +52,7 @@ class ZoneManager {
     /**
      * @constructor
      */
-    constructor(id : number, socket : SocketNamespace, backendSocket : any) {
+    constructor(id : number = -2, socket : SocketNamespace = null, backendSocket : any = null) {
         Logger.debug("New Zone Manager");
         Logger.debug(id);
         Logger.debug(socket);
@@ -68,7 +68,7 @@ class ZoneManager {
     /**
      * Returns Zone's id.
      *
-     * @name getZoneId
+     * @method getZoneId
      * @returns {number} The zone's id.
      */
     getZoneId() : number {
