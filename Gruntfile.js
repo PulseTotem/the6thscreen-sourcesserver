@@ -2,11 +2,14 @@ module.exports = function (grunt) {
     'use strict';
 
     // load extern tasks
+    grunt.loadNpmTasks('grunt-update-json');
+    grunt.loadNpmTasks('grunt-npm-install');
     grunt.loadNpmTasks('grunt-express-server');
     grunt.loadNpmTasks('grunt-contrib-clean');
     grunt.loadNpmTasks('grunt-contrib-watch');
     grunt.loadNpmTasks('grunt-typescript');
     grunt.loadNpmTasks('grunt-contrib-symlink');
+    grunt.loadNpmTasks('grunt-contrib-copy');
 
     // tasks
     grunt.initConfig({
@@ -30,11 +33,37 @@ module.exports = function (grunt) {
                 dest: 't6s-core/core-backend'
             }
         },
+
+        update_json: {
+            packageBuild: {
+                src: ['t6s-core/core-backend/package.json', 'package.json'],
+                dest: 'package-tmp.json',
+                fields: [
+                    'name',
+                    'version',
+                    'dependencies',
+                    'devDependencies',
+                    'overrides'
+                ]
+            }
+        },
 // ---------------------------------------------
 
 // ---------------------------------------------
 //                          build and dist tasks
 // ---------------------------------------------
+        copy: {
+            buildPackageBak: {
+                files: 	[{'package-bak.json': 'package.json'}]
+            },
+            buildPackageReplace: {
+                files: 	[{'package.json': 'package-tmp.json'}]
+            },
+            buildPackageReinit: {
+                files: 	[{'package.json': 'package-bak.json'}]
+            }
+        },
+
         typescript: {
             build: {
                 src: [
@@ -105,6 +134,7 @@ module.exports = function (grunt) {
 //                                    clean task
 // ---------------------------------------------
         clean: {
+            package: ['package-bak.json', 'package-tmp.json'],
             build: ['build/'],
             dist: ['dist/']
         }
@@ -117,15 +147,15 @@ module.exports = function (grunt) {
     grunt.registerTask('init', ['symlink']);
 
     grunt.registerTask('build', function () {
-        grunt.task.run(['clean:build']);
+        grunt.task.run(['clean:package', 'clean:build']);
 
-        grunt.task.run(['typescript:build']);
+        grunt.task.run(['update_json:packageBuild', 'copy:buildPackageBak', 'copy:buildPackageReplace', 'npm-install', 'copy:buildPackageReinit', 'typescript:build', 'clean:package']);
     });
 
     grunt.registerTask('dist', function () {
-        grunt.task.run(['clean:dist']);
+        grunt.task.run(['clean:package', 'clean:dist']);
 
-        grunt.task.run(['typescript:dist']);
+        grunt.task.run(['update_json:packageBuild', 'copy:buildPackageBak', 'copy:buildPackageReplace', 'npm-install', 'copy:buildPackageReinit', 'typescript:dist', 'clean:package']);
     });
 
     grunt.registerTask('develop', ['build', 'express:build', 'watch']);
