@@ -6,6 +6,7 @@
 /// <reference path="../../libsdef/socket.io-client.d.ts" />
 
 /// <reference path="../../t6s-core/core-backend/scripts/Logger.ts" />
+/// <reference path="../../t6s-core/core-backend/scripts/ForEachAsync.ts" />
 
 var socketIOClient = require('socket.io-client');
 
@@ -62,6 +63,78 @@ class Call {
     private _params : Object;
 
     /**
+     * Source ParamTypes Description.
+     *
+     * @property _sourceParamTypesDescription
+     * @private
+     * @type any
+     */
+    private _sourceParamTypesDescription: any;
+
+    /**
+     * Source host.
+     *
+     * @property _sourceHost
+     * @private
+     * @type string
+     */
+    private _sourceHost : string;
+
+    /**
+     * Source port.
+     *
+     * @property _sourcePort
+     * @private
+     * @type string
+     */
+    private _sourcePort : string;
+
+    /**
+     * Source service.
+     *
+     * @property _sourceService
+     * @private
+     * @type string
+     */
+    private _sourceService : string;
+
+    /**
+     * Source name.
+     *
+     * @property _sourceName
+     * @private
+     * @type string
+     */
+    private _sourceName : string;
+
+    /**
+     * State of retrieving source information.
+     *
+     * @property _sourceReady
+     * @private
+     * @type boolean
+     */
+    private _sourceReady : boolean;
+
+    /**
+     * State of retrieving params values.
+     *
+     * @property _paramsReady
+     * @private
+     * @type Object
+     */
+    private _paramsReady : Object;
+
+    /**
+     * Number of Params.
+     *
+     * @property _paramsLength
+     * @private
+     * @type number
+     */
+    private _paramsLength : number;
+
+    /**
      * @constructor
      */
     constructor(id : number, socket : SocketNamespace, backendSocket : any) {
@@ -69,7 +142,39 @@ class Call {
         this._callId = id;
         this._zoneSocket = socket;
         this._backendSocket = backendSocket;
+        this._paramsLength = 0;
+        this._sourceReady = false;
+        this._paramsReady = new Object();
+        Logger.debug("Construct");
+        Logger.debug(this._paramsReady);
+        this._listen();
         this._init();
+    }
+
+    /**
+     * Listen for descriptions reception.
+     *
+     * @method _listen
+     * @private
+     */
+    private _listen() {
+        var self = this;
+
+        this._backendSocket.on("CallDescription", function(callDescription) {
+            self.callDescriptionProcess(callDescription);
+        });
+
+        this._backendSocket.on("CallTypeDescription", function(callTypeDescription) {
+            self.callTypeDescriptionProcess(callTypeDescription);
+        });
+
+        this._backendSocket.on("SourceDescription", function(sourceDescription) {
+            self.sourceDescriptionProcess(sourceDescription);
+        });
+
+        this._backendSocket.on("ParamValueDescription", function(paramValueDescription) {
+            self.paramValueDescriptionProcess(paramValueDescription);
+        });
     }
 
     /**
@@ -79,12 +184,7 @@ class Call {
      * @private
      */
     private _init() {
-        var self = this;
-
-        this._backendSocket.on("CallDescription", function(callDescription) {
-            self.callDescriptionProcess(callDescription);
-        });
-        this._backendSocket.emit("RetrieveCallDescription", {"callId" : self._callId});
+        this._backendSocket.emit("RetrieveCallDescription", {"callId" : this._callId});
     }
 
     /**
@@ -98,20 +198,22 @@ class Call {
         var self = this;
         if(typeof(callDescription.callType) != "undefined") {
             var callTypeId = callDescription.callType["id"];
-            this._backendSocket.on("CallTypeDescription", function(callTypeDescription) {
-                self.callTypeDescriptionProcess(callTypeDescription);
-            });
+
             this._backendSocket.emit("RetrieveCallTypeDescription", {"callTypeId" : callTypeId});
         }
 
         if(typeof(callDescription.paramValues) != "undefined") {
-            for(var iParamValue in callDescription.paramValues) {
-                var paramValueId = callDescription.paramValues[iParamValue]["id"];
-                this._backendSocket.on("ParamValueDescription", function(paramValueDescription) {
-                    self.paramValueDescriptionProcess(paramValueDescription, callDescription.paramValues[iParamValue]["value"]);
-                });
-                this._backendSocket.emit("RetrieveParamValueDescription", {"paramValueId" : paramValueId});
-            }
+            this._paramsLength = callDescription.paramValues.length;
+            ForEachAsync.forEach(callDescription.paramValues, function(iParamValue) {
+                var paramValue = callDescription.paramValues[iParamValue];
+                var paramValueId = paramValue["id"];
+
+                self._paramsReady[paramValueId] = false;
+                Logger.debug("callDescriptionProcess paramsReady");
+                Logger.debug(self._paramsReady);
+
+                self._backendSocket.emit("RetrieveParamValueDescription", {"paramValueId" : paramValueId});
+            });
         }
     }
 
@@ -129,9 +231,7 @@ class Call {
 
         if(typeof(callTypeDescription.source) != "undefined") {
             var sourceId = callTypeDescription.source["id"];
-            this._backendSocket.on("SourceDescription", function(sourceDescription) {
-                self.sourceDescriptionProcess(sourceDescription);
-            });
+
             this._backendSocket.emit("RetrieveSourceDescription", {"sourceId" : sourceId});
         }
     }
@@ -143,11 +243,17 @@ class Call {
      * @param {JSON Object} paramValueDescription - The paramValue's description to process
      * @param {string} value - The paramValue's value
      */
-    paramValueDescriptionProcess(paramValueDescription : any, value : string) {
+    paramValueDescriptionProcess(paramValueDescription : any) {
         Logger.debug("paramValueDescriptionProcess");
 
-        if(typeof(paramValueDescription.paramType) != "undefined" && typeof(paramValueDescription.paramType.name) != "undefined") {
-            this._params[paramValueDescription.paramType.name] = value;
+        if(typeof(paramValueDescription.paramType) != "undefined" && typeof(paramValueDescription.paramType.name) != "undefined"  && typeof(paramValueDescription.value) != "undefined") {
+            this._params[paramValueDescription.paramType.name] = paramValueDescription.value;
+
+            this._paramsReady[paramValueDescription.id] = true;
+            Logger.debug("paramValueDescriptionProcess paramsReady");
+            Logger.debug(this._paramsReady);
+
+            this._connectToSource();
         }
     }
 
@@ -163,57 +269,102 @@ class Call {
         var self = this;
 
         Logger.debug(sourceDescription);
+
         if(typeof(sourceDescription.paramTypes) != "undefined") {
-            for (var iParamTypes in sourceDescription.paramTypes) {
-                var paramTypeDescription = sourceDescription.paramTypes[iParamTypes];
+            this._sourceParamTypesDescription = sourceDescription.paramTypes;
+        }
+
+        if(typeof(sourceDescription.host) != "undefined" && typeof(sourceDescription.port) != "undefined" && typeof(sourceDescription.service) != "undefined" && typeof(sourceDescription.name) != "undefined") {
+            this._sourceHost = sourceDescription.host;
+            this._sourcePort = sourceDescription.port;
+            this._sourceService = sourceDescription.service;
+            this._sourceName = sourceDescription.name;
+
+            this._sourceReady = true;
+
+            this._connectToSource();
+        }
+    }
+
+    /**
+     * Connection to Source.
+     *
+     * @method _connectToSource
+     * @private
+     */
+    private _connectToSource() {
+        var self = this;
+
+        var paramsOk = true;
+        var paramsReadyLength = 0;
+
+        Logger.debug("avant boucle check paramsReady");
+        Logger.debug(this._paramsReady);
+        for(var iPR in this._paramsReady) {
+            paramsOk = paramsOk && this._paramsReady[iPR];
+            paramsReadyLength++;
+        }
+
+        Logger.debug("sourceReady");
+        Logger.debug(this._sourceReady);
+        Logger.debug("paramsOk");
+        Logger.debug(paramsOk);
+        Logger.debug("paramsReady");
+        Logger.debug(this._paramsReady);
+        Logger.debug("paramsReady.length");
+        Logger.debug(paramsReadyLength);
+        Logger.debug("paramsLength");
+        Logger.debug(this._paramsLength);
+
+        if(this._sourceReady && paramsOk && (paramsReadyLength == this._paramsLength || this._paramsLength == 0)) {
+
+            for (var iParamTypes in this._sourceParamTypesDescription) {
+                var paramTypeDescription = this._sourceParamTypesDescription[iParamTypes];
                 if(typeof(paramTypeDescription.name) != "undefined") {
                     if(typeof(this._params[paramTypeDescription.name]) == "undefined") {
+                        Logger.error("Error --> A value for paramType is missing...");
                         //TODO : Error --> A value for paramType is missing...
                     }
                 }
             }
-        }
 
-        if(typeof(sourceDescription.host) != "undefined" && typeof(sourceDescription.port) != "undefined" && typeof(sourceDescription.service) != "undefined" && typeof(sourceDescription.name) != "undefined") {
-            var self = this;
-
-            Logger.debug('Connection to source : ' + 'http://' + sourceDescription.host + ':' + sourceDescription.port + '/' + sourceDescription.service);
+            Logger.debug('Connection to source : ' + 'http://' + this._sourceHost + ':' + this._sourcePort + '/' + this._sourceService);
             Logger.debug(self._params);
-            this._callSocket = socketIOClient('http://' + sourceDescription.host + ':' + sourceDescription.port + '/' + sourceDescription.service);
-            this._callSocket.on("connect", function() {
+            this._callSocket = socketIOClient('http://' + this._sourceHost + ':' + this._sourcePort + '/' + this._sourceService);
+            this._callSocket.on("connect", function () {
                 Logger.info("Connected to Service.");
-                self._callSocket.emit(sourceDescription.name, self._params);
-                Logger.debug("Call to Source : " + sourceDescription.name + " with params : ");
+                self._callSocket.emit(self._sourceName, self._params);
+                Logger.debug("Call to Source : " + self._sourceName + " with params : ");
                 Logger.debug(self._params);
             });
 
-            this._callSocket.on("error", function(errorData) {
+            this._callSocket.on("error", function (errorData) {
                 Logger.error("An error occurred during connection to Service.");
                 Logger.debug(errorData);
             });
 
-            this._callSocket.on("disconnect", function() {
+            this._callSocket.on("disconnect", function () {
                 Logger.info("Disconnected to Service.");
             });
 
-            this._callSocket.on("reconnect", function(attemptNumber) {
+            this._callSocket.on("reconnect", function (attemptNumber) {
                 Logger.info("Connected to Service after " + attemptNumber + " attempts.");
             });
 
-            this._callSocket.on("reconnect_attempt", function() {
+            this._callSocket.on("reconnect_attempt", function () {
                 //TODO?
             });
 
-            this._callSocket.on("reconnecting", function(attemptNumber) {
+            this._callSocket.on("reconnecting", function (attemptNumber) {
                 Logger.info("Trying to connect to Service - Attempt number " + attemptNumber + ".");
             });
 
-            this._callSocket.on("reconnect_error", function(errorData) {
+            this._callSocket.on("reconnect_error", function (errorData) {
                 Logger.error("An error occurred during reconnection to Service.");
                 Logger.debug(errorData);
             });
 
-            this._callSocket.on("reconnect_failed", function() {
+            this._callSocket.on("reconnect_failed", function () {
                 Logger.error("Failed to connect to Service. No new attempt will be done.");
             });
         }
