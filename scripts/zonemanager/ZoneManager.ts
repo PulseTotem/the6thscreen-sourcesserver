@@ -87,7 +87,7 @@ class ZoneManager {
             //callDescription - The call description : {id : number}
             Logger.debug("newCall");
             Logger.debug(callDescription);
-            self._calls.push(new Call(callDescription.id, self._zoneSocket, self._backendSocket));
+            self._calls.push(new Call(callDescription.id, self.getZoneId(), self._zoneSocket, self._backendSocket));
         });
     }
 }

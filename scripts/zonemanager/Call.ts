@@ -27,6 +27,15 @@ class Call {
     private _callId: number;
 
     /**
+     * Zone's id.
+     *
+     * @property _zoneId
+     * @private
+     * @type number
+     */
+    private _zoneId: number;
+
+    /**
      * Zone's socket.
      *
      * @property _zoneSocket
@@ -137,9 +146,10 @@ class Call {
     /**
      * @constructor
      */
-    constructor(id : number, socket : SocketNamespace, backendSocket : any) {
+    constructor(id : number, zoneId : number, socket : SocketNamespace, backendSocket : any) {
         this._params = new Object();
         this._callId = id;
+        this._zoneId = zoneId;
         this._zoneSocket = socket;
         this._backendSocket = backendSocket;
         this._paramsLength = 0;
@@ -336,6 +346,12 @@ class Call {
                 self._callSocket.emit(self._sourceName, self._params);
                 Logger.debug("Call to Source : " + self._sourceName + " with params : ");
                 Logger.debug(self._params);
+            });
+
+            this._callSocket.on("newInfos", function (newInfos) {
+                Logger.info("Received new infos.");
+                self._callSocket.emit("zones/" + self._zoneId + "/calls/" + self._callId, newInfos);
+                Logger.debug("Send new Infos to Zone : zones/" + self._zoneId + "/calls/" + self._callId);
             });
 
             this._callSocket.on("error", function (errorData) {
