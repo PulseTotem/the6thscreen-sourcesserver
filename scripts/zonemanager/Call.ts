@@ -40,9 +40,9 @@ class Call {
      *
      * @property _zoneSocket
      * @private
-     * @type SocketNamespace
+     * @type any
      */
-    private _zoneSocket: SocketNamespace;
+    private _zoneSocket: any;
 
     /**
      * Backend socket.
@@ -146,7 +146,7 @@ class Call {
     /**
      * @constructor
      */
-    constructor(id : number, zoneId : number, socket : SocketNamespace, backendSocket : any) {
+    constructor(id : number, zoneId : number, socket : any, backendSocket : any) {
         this._params = new Object();
         this._callId = id;
         this._zoneId = zoneId;
@@ -350,7 +350,8 @@ class Call {
 
             this._callSocket.on("newInfos", function (newInfos) {
                 Logger.info("Received new infos.");
-                self._callSocket.emit("zones/" + self._zoneId + "/calls/" + self._callId, newInfos);
+                Logger.debug(newInfos);
+                self._zoneSocket.emit("zones/" + self._zoneId + "/calls/" + self._callId, newInfos);
                 Logger.debug("Send new Infos to Zone : zones/" + self._zoneId + "/calls/" + self._callId);
             });
 
@@ -368,7 +369,7 @@ class Call {
             });
 
             this._callSocket.on("reconnect_attempt", function () {
-                //TODO?
+                Logger.info("Reconnect attempt to Service.");
             });
 
             this._callSocket.on("reconnecting", function (attemptNumber) {
