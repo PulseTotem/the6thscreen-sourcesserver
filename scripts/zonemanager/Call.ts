@@ -145,8 +145,6 @@ class Call {
         this._paramsLength = 0;
         this._sourceReady = false;
         this._paramsReady = new Object();
-        Logger.debug("Construct");
-        Logger.debug(this._paramsReady);
         this._listen();
         this._init();
     }
@@ -209,8 +207,6 @@ class Call {
                 var paramValueId = paramValue["id"];
 
                 self._paramsReady[paramValueId] = false;
-                Logger.debug("callDescriptionProcess paramsReady");
-                Logger.debug(self._paramsReady);
 
                 The6thScreenSourcesServer.backendSocket.emit("RetrieveParamValueDescription", {"zoneId" : self._zoneId, "callId" : self._callId, "paramValueId" : paramValueId});
             });
@@ -227,7 +223,6 @@ class Call {
         var self = this;
 
         Logger.debug("callTypeDescriptionProcess");
-        Logger.debug(callTypeDescription);
 
         if(typeof(callTypeDescription.source) != "undefined") {
             var sourceId = callTypeDescription.source["id"];
@@ -250,8 +245,6 @@ class Call {
             this._params[paramValueDescription.paramType.name] = paramValueDescription.value;
 
             this._paramsReady[paramValueDescription.id] = true;
-            Logger.debug("paramValueDescriptionProcess paramsReady");
-            Logger.debug(this._paramsReady);
 
             this._connectToSource();
         }
@@ -264,11 +257,7 @@ class Call {
      * @param {JSON Object} sourceDescription - The source's description to process
      */
     sourceDescriptionProcess(sourceDescription : any) {
-        Logger.debug("sourceDescriptionProcess");
-
         var self = this;
-
-        Logger.debug(sourceDescription);
 
         if(typeof(sourceDescription.paramTypes) != "undefined") {
             this._sourceParamTypesDescription = sourceDescription.paramTypes;
@@ -298,23 +287,10 @@ class Call {
         var paramsOk = true;
         var paramsReadyLength = 0;
 
-        Logger.debug("avant boucle check paramsReady");
-        Logger.debug(this._paramsReady);
         for(var iPR in this._paramsReady) {
             paramsOk = paramsOk && this._paramsReady[iPR];
             paramsReadyLength++;
         }
-
-        Logger.debug("sourceReady");
-        Logger.debug(this._sourceReady);
-        Logger.debug("paramsOk");
-        Logger.debug(paramsOk);
-        Logger.debug("paramsReady");
-        Logger.debug(this._paramsReady);
-        Logger.debug("paramsReady.length");
-        Logger.debug(paramsReadyLength);
-        Logger.debug("paramsLength");
-        Logger.debug(this._paramsLength);
 
         if(this._sourceReady && paramsOk && (paramsReadyLength == this._paramsLength || this._paramsLength == 0)) {
 
@@ -328,26 +304,24 @@ class Call {
                 }
             }
 
-            Logger.debug('Connection to source : ' + 'http://' + this._sourceHost + ':' + this._sourcePort + '/' + this._sourceService);
-            Logger.debug(self._params);
             this._callSocket = socketIOClient('http://' + this._sourceHost + ':' + this._sourcePort + '/' + this._sourceService);
             this._callSocket.on("connect", function () {
                 Logger.info("Connected to Service.");
                 self._callSocket.emit(self._sourceName, self._params);
-                Logger.debug("Call to Source : " + self._sourceName + " with params : ");
-                Logger.debug(self._params);
             });
 
-            this._callSocket.on("newInfos", function (newInfos) {
-                Logger.info("Received new infos.");
-                Logger.debug(newInfos);
-                self._zoneSocket.emit("zones/" + self._zoneId + "/calls/" + self._callId, newInfos);
-                Logger.debug("Send new Infos to Zone : zones/" + self._zoneId + "/calls/" + self._callId);
+            this._callSocket.on("connectionHash", function (connectionHash) {
+                Logger.info("Received connection hash.");
+
+                var sourceConnectionDescription = new Object();
+                sourceConnectionDescription["url"] = 'http://' + self._sourceHost + ':' + self._sourcePort + '/' + self._sourceService;
+                sourceConnectionDescription["hash"] = connectionHash.hash;
+
+                self._zoneSocket.emit("zones/" + self._zoneId + "/calls/" + self._callId + "/hash", sourceConnectionDescription);
             });
 
             this._callSocket.on("error", function (errorData) {
                 Logger.error("An error occurred during connection to Service.");
-                Logger.debug(errorData);
             });
 
             this._callSocket.on("disconnect", function () {
@@ -368,7 +342,6 @@ class Call {
 
             this._callSocket.on("reconnect_error", function (errorData) {
                 Logger.error("An error occurred during reconnection to Service.");
-                Logger.debug(errorData);
             });
 
             this._callSocket.on("reconnect_failed", function () {
