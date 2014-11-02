@@ -45,15 +45,6 @@ class Call {
     private _zoneSocket: any;
 
     /**
-     * Backend socket.
-     *
-     * @property _backendSocket
-     * @private
-     * @type any
-     */
-    private _backendSocket: any;
-
-    /**
      * Call socket.
      *
      * @property _callSocket
@@ -146,12 +137,11 @@ class Call {
     /**
      * @constructor
      */
-    constructor(id : number, zoneId : number, socket : any, backendSocket : any) {
+    constructor(id : number, zoneId : number, socket : any) {
         this._params = new Object();
         this._callId = id;
         this._zoneId = zoneId;
         this._zoneSocket = socket;
-        this._backendSocket = backendSocket;
         this._paramsLength = 0;
         this._sourceReady = false;
         this._paramsReady = new Object();
@@ -170,19 +160,19 @@ class Call {
     private _listen() {
         var self = this;
 
-        this._backendSocket.on("CallDescription", function(callDescription) {
+        The6thScreenSourcesServer.backendSocket.on("CallDescription", function(callDescription) {
             self.callDescriptionProcess(callDescription);
         });
 
-        this._backendSocket.on("CallTypeDescription", function(callTypeDescription) {
+        The6thScreenSourcesServer.backendSocket.on("CallTypeDescription", function(callTypeDescription) {
             self.callTypeDescriptionProcess(callTypeDescription);
         });
 
-        this._backendSocket.on("SourceDescription", function(sourceDescription) {
+        The6thScreenSourcesServer.backendSocket.on("SourceDescription", function(sourceDescription) {
             self.sourceDescriptionProcess(sourceDescription);
         });
 
-        this._backendSocket.on("ParamValueDescription", function(paramValueDescription) {
+        The6thScreenSourcesServer.backendSocket.on("ParamValueDescription", function(paramValueDescription) {
             self.paramValueDescriptionProcess(paramValueDescription);
         });
     }
@@ -194,7 +184,7 @@ class Call {
      * @private
      */
     private _init() {
-        this._backendSocket.emit("RetrieveCallDescription", {"callId" : this._callId});
+        The6thScreenSourcesServer.backendSocket.emit("RetrieveCallDescription", {"callId" : this._callId});
     }
 
     /**
@@ -209,7 +199,7 @@ class Call {
         if(typeof(callDescription.callType) != "undefined") {
             var callTypeId = callDescription.callType["id"];
 
-            this._backendSocket.emit("RetrieveCallTypeDescription", {"callTypeId" : callTypeId});
+            The6thScreenSourcesServer.backendSocket.emit("RetrieveCallTypeDescription", {"callTypeId" : callTypeId});
         }
 
         if(typeof(callDescription.paramValues) != "undefined") {
@@ -222,7 +212,7 @@ class Call {
                 Logger.debug("callDescriptionProcess paramsReady");
                 Logger.debug(self._paramsReady);
 
-                self._backendSocket.emit("RetrieveParamValueDescription", {"paramValueId" : paramValueId});
+                The6thScreenSourcesServer.backendSocket.emit("RetrieveParamValueDescription", {"paramValueId" : paramValueId});
             });
         }
     }
@@ -242,7 +232,7 @@ class Call {
         if(typeof(callTypeDescription.source) != "undefined") {
             var sourceId = callTypeDescription.source["id"];
 
-            this._backendSocket.emit("RetrieveSourceDescription", {"sourceId" : sourceId});
+            The6thScreenSourcesServer.backendSocket.emit("RetrieveSourceDescription", {"sourceId" : sourceId});
         }
     }
 
