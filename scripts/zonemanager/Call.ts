@@ -160,19 +160,19 @@ class Call {
     private _listen() {
         var self = this;
 
-        The6thScreenSourcesServer.backendSocket.on("CallDescription", function(callDescription) {
+        The6thScreenSourcesServer.backendSocket.on("zones/" + this._zoneId + "/calls/" + this._callId + "/CallDescription", function(callDescription) {
             self.callDescriptionProcess(callDescription);
         });
 
-        The6thScreenSourcesServer.backendSocket.on("CallTypeDescription", function(callTypeDescription) {
+        The6thScreenSourcesServer.backendSocket.on("zones/" + this._zoneId + "/calls/" + this._callId + "/CallTypeDescription", function(callTypeDescription) {
             self.callTypeDescriptionProcess(callTypeDescription);
         });
 
-        The6thScreenSourcesServer.backendSocket.on("SourceDescription", function(sourceDescription) {
+        The6thScreenSourcesServer.backendSocket.on("zones/" + this._zoneId + "/calls/" + this._callId + "/SourceDescription", function(sourceDescription) {
             self.sourceDescriptionProcess(sourceDescription);
         });
 
-        The6thScreenSourcesServer.backendSocket.on("ParamValueDescription", function(paramValueDescription) {
+        The6thScreenSourcesServer.backendSocket.on("zones/" + this._zoneId + "/calls/" + this._callId + "/ParamValueDescription", function(paramValueDescription) {
             self.paramValueDescriptionProcess(paramValueDescription);
         });
     }
@@ -184,7 +184,7 @@ class Call {
      * @private
      */
     private _init() {
-        The6thScreenSourcesServer.backendSocket.emit("RetrieveCallDescription", {"callId" : this._callId});
+        The6thScreenSourcesServer.backendSocket.emit("RetrieveCallDescription", {"zoneId" : this._zoneId, "callId" : this._callId});
     }
 
     /**
@@ -199,7 +199,7 @@ class Call {
         if(typeof(callDescription.callType) != "undefined") {
             var callTypeId = callDescription.callType["id"];
 
-            The6thScreenSourcesServer.backendSocket.emit("RetrieveCallTypeDescription", {"callTypeId" : callTypeId});
+            The6thScreenSourcesServer.backendSocket.emit("RetrieveCallTypeDescription", {"zoneId" : this._zoneId, "callId" : this._callId, "callTypeId" : callTypeId});
         }
 
         if(typeof(callDescription.paramValues) != "undefined") {
@@ -212,7 +212,7 @@ class Call {
                 Logger.debug("callDescriptionProcess paramsReady");
                 Logger.debug(self._paramsReady);
 
-                The6thScreenSourcesServer.backendSocket.emit("RetrieveParamValueDescription", {"paramValueId" : paramValueId});
+                The6thScreenSourcesServer.backendSocket.emit("RetrieveParamValueDescription", {"zoneId" : self._zoneId, "callId" : self._callId, "paramValueId" : paramValueId});
             });
         }
     }
@@ -232,7 +232,7 @@ class Call {
         if(typeof(callTypeDescription.source) != "undefined") {
             var sourceId = callTypeDescription.source["id"];
 
-            The6thScreenSourcesServer.backendSocket.emit("RetrieveSourceDescription", {"sourceId" : sourceId});
+            The6thScreenSourcesServer.backendSocket.emit("RetrieveSourceDescription", {"zoneId" : this._zoneId, "callId" : this._callId, "sourceId" : sourceId});
         }
     }
 
