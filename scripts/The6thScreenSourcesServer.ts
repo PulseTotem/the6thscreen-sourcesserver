@@ -62,7 +62,8 @@ class The6thScreenSourcesServer extends Server {
     private _connectToBackend() {
         var self = this;
 
-        The6thScreenSourcesServer.backendSocket = socketIOClient('http://localhost:4000/sources');
+        The6thScreenSourcesServer.backendSocket = socketIOClient('http://localhost:4000/sources',
+            {"reconnection" : true, "reconnectionDelay" : 1000, "reconnectionDelayMax" : 5000, "timeout" : 10000, "autoConnect" : true});
 
         The6thScreenSourcesServer.backendSocket.on("connect", function() {
             Logger.info("Connected to Backend.");
