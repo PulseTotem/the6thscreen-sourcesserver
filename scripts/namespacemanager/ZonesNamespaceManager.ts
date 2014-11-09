@@ -52,4 +52,19 @@ class ZonesNamespaceManager extends NamespaceManager {
             zoneNamespaceInstance._calls.push(new Call(callDescription.id, zoneId, self.socket));
         });
     }
+
+    /**
+     * Method called when socket is disconnected.
+     *
+     * @method onDisconnection
+     */
+    onDisconnection() {
+        Logger.debug(The6thScreenSourcesServer.backendSocket);
+
+        for(var i = this._calls.length - 1 ; i > -1 ; i--) {
+            delete(this._calls[i]);
+        }
+
+        Logger.debug(The6thScreenSourcesServer.backendSocket);
+    }
 }

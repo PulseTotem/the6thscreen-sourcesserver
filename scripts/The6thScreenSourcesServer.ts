@@ -75,7 +75,7 @@ class The6thScreenSourcesServer extends Server {
         });
 
         The6thScreenSourcesServer.backendSocket.on("disconnect", function() {
-            Logger.info("Disconnected to Backend.");
+            Logger.info("Disconnected from Backend.");
         });
 
         The6thScreenSourcesServer.backendSocket.on("reconnect", function(attemptNumber) {
