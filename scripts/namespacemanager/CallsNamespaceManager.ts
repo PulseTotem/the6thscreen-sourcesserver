@@ -206,9 +206,15 @@ class CallsNamespaceManager extends NamespaceManager {
         Logger.debug("Step 2.1 : _connectToBackend");
         var self = this;
 
-        this._backendSocket = socketIOClient('http://localhost:4000/sources',
-            {"reconnection" : true, "reconnectionDelay" : 1000, "reconnectionDelayMax" : 5000, "timeout" : 10000, "autoConnect" : true});
+        try {
 
+            this._backendSocket = socketIOClient('http://localhost:4000/sources',
+                {"reconnection": true, "reconnectionDelay": 1000, "reconnectionDelayMax": 5000, "timeout": 10000, "autoConnect": true, "reconnectionAttempts": 10, "multiplex": false});
+
+        } catch(e) {
+            Logger.error("_connectToBackend error");
+            Logger.error(e.message);
+        }
         this._listeningFromBackend();
 
         this._backendSocket.on("connect", function() {
@@ -244,6 +250,11 @@ class CallsNamespaceManager extends NamespaceManager {
 
         this._backendSocket.on("reconnect_failed", function() {
             Logger.error("Failed to connect to Backend. No new attempt will be done.");
+        });
+
+        this._backendSocket.on("message", function(msg) {
+            Logger.info("Received new message from backend.");
+            Logger.debug(msg);
         });
     }
 
@@ -475,7 +486,8 @@ class CallsNamespaceManager extends NamespaceManager {
                 }
             }
 
-            this._sourceSocket = socketIOClient('http://' + this._sourceHost + ':' + this._sourcePort + '/' + this._sourceService);
+            this._sourceSocket = socketIOClient('http://' + this._sourceHost + ':' + this._sourcePort + '/' + this._sourceService,
+                {"reconnection" : true, 'reconnectionAttempts' : 10, "reconnectionDelay" : 1000, "reconnectionDelayMax" : 5000, "timeout" : 5000, "autoConnect" : true});
             this._listeningFromSource();
             this._sourceSocket.on("connect", function () {
                 Logger.info("Connected to Service.");
