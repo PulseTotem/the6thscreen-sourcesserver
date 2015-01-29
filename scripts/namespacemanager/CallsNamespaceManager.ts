@@ -487,7 +487,7 @@ class CallsNamespaceManager extends NamespaceManager {
             }
 
             this._sourceSocket = socketIOClient('http://' + this._sourceHost + ':' + this._sourcePort + '/' + this._sourceService,
-                {"reconnection" : true, 'reconnectionAttempts' : 10, "reconnectionDelay" : 1000, "reconnectionDelayMax" : 5000, "timeout" : 5000, "autoConnect" : true});
+                {"reconnection" : true, 'reconnectionAttempts' : 10, "reconnectionDelay" : 1000, "reconnectionDelayMax" : 5000, "timeout" : 5000, "autoConnect" : true, "multiplex": false});
             this._listeningFromSource();
             this._sourceSocket.on("connect", function () {
                 Logger.info("Connected to Service.");
@@ -547,7 +547,7 @@ class CallsNamespaceManager extends NamespaceManager {
         var self = this;
 
         this._sourceSocket.on("connectionHash", function (connectionHash) {
-            Logger.info("Received connection hash.");
+            Logger.info("Received connection hash. => " + connectionHash.hash);
 
             var sourceConnectionDescription = new Object();
             sourceConnectionDescription["url"] = 'http://' + self._sourceHost + ':' + self._sourcePort + '/' + self._sourceService;
