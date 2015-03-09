@@ -214,6 +214,7 @@ class CallsNamespaceManager extends NamespaceManager {
         } catch(e) {
             Logger.error("_connectToBackend error");
             Logger.error(e.message);
+            self._sendErrorToClient(e);
         }
         this._listeningFromBackend();
 
@@ -250,6 +251,7 @@ class CallsNamespaceManager extends NamespaceManager {
 
         this._backendSocket.on("reconnect_failed", function() {
             Logger.error("Failed to connect to Backend. No new attempt will be done.");
+            self._sendErrorToClient(new Error("Fail to connect to Backend."));
         });
 
         this._backendSocket.on("message", function(msg) {
@@ -268,20 +270,40 @@ class CallsNamespaceManager extends NamespaceManager {
         Logger.debug("Step 2.2 : _listeningFromBackend");
         var self = this;
 
-        this._backendSocket.on("CallDescription", function(callDescription) {
-            self.callDescriptionProcess(callDescription);
+        this._backendSocket.on("CallDescription", function(response) {
+            self.manageServerResponse(response, function(callDescription) {
+                self.callDescriptionProcess(callDescription);
+            }, function(error) {
+                Logger.error(error);
+                self._sendErrorToClient(error);
+            });
         });
 
-        this._backendSocket.on("CallTypeDescription", function(callTypeDescription) {
-            self.callTypeDescriptionProcess(callTypeDescription);
+        this._backendSocket.on("CallTypeDescription", function(response) {
+            self.manageServerResponse(response, function(callTypeDescription) {
+                self.callTypeDescriptionProcess(callTypeDescription);
+            }, function(error) {
+                Logger.error(error);
+                self._sendErrorToClient(error);
+            });
         });
 
-        this._backendSocket.on("SourceDescription", function(sourceDescription) {
-            self.sourceDescriptionProcess(sourceDescription);
+        this._backendSocket.on("SourceDescription", function(response) {
+            self.manageServerResponse(response, function(sourceDescription) {
+                self.sourceDescriptionProcess(sourceDescription);
+            }, function(error) {
+                Logger.error(error);
+                self._sendErrorToClient(error);
+            });
         });
 
-        this._backendSocket.on("ParamValueDescription", function(paramValueDescription) {
-            self.paramValueDescriptionProcess(paramValueDescription);
+        this._backendSocket.on("ParamValueDescription", function(response) {
+            self.manageServerResponse(response, function(paramValueDescription) {
+                self.paramValueDescriptionProcess(paramValueDescription);
+            }, function(error) {
+                Logger.error(error);
+                self._sendErrorToClient(error);
+            });
         });
     }
 
@@ -481,6 +503,7 @@ class CallsNamespaceManager extends NamespaceManager {
                 if(typeof(paramTypeDescription.name) != "undefined") {
                     if(typeof(this._params[paramTypeDescription.name]) == "undefined") {
                         Logger.error("Error --> A value for paramType is missing...");
+                        self._sendErrorToClient(new Error("Fail to connect to Service because a value for a ParamType is missing."));
                         //TODO : Error --> A value for paramType is missing...
                     }
                 }
@@ -520,6 +543,7 @@ class CallsNamespaceManager extends NamespaceManager {
 
             this._sourceSocket.on("reconnect_failed", function () {
                 Logger.error("Failed to connect to Service. No new attempt will be done.");
+                self._sendErrorToClient(new Error("Fail to connect to Service."));
             });
         }
     }
@@ -546,16 +570,22 @@ class CallsNamespaceManager extends NamespaceManager {
         Logger.debug("Step 5.2 : _listeningFromSource");
         var self = this;
 
-        this._sourceSocket.on("connectionHash", function (connectionHash) {
-            Logger.info("Received connection hash. => " + connectionHash.hash);
+        this._sourceSocket.on("connectionHash", function (response) {
+            self.manageServerResponse(response, function(connectionHash) {
+                Logger.info("Received connection hash. => " + connectionHash.hash);
 
-            var sourceConnectionDescription = new Object();
-            sourceConnectionDescription["url"] = 'http://' + self._sourceHost + ':' + self._sourcePort + '/' + self._sourceService;
-            sourceConnectionDescription["hash"] = connectionHash.hash;
+                var sourceConnectionDescription = new Object();
+                sourceConnectionDescription["url"] = 'http://' + self._sourceHost + ':' + self._sourcePort + '/' + self._sourceService;
+                sourceConnectionDescription["hash"] = connectionHash.hash;
 
-            self._sourceConnectionDescription = sourceConnectionDescription;
+                self._sourceConnectionDescription = sourceConnectionDescription;
 
-            self._sendSourceConnectionDescription();
+                self._sendSourceConnectionDescription();
+            }, function(error) {
+                Logger.error(error);
+                self._sendErrorToClient(error);
+            });
+
         });
     }
 
@@ -566,7 +596,17 @@ class CallsNamespaceManager extends NamespaceManager {
      * @private
      */
     private _sendSourceConnectionDescription() {
-        this.socket.emit("sourceConnectionDescription", this._sourceConnectionDescription);
+        this.socket.emit("sourceConnectionDescription", this.formatResponse(true, this._sourceConnectionDescription));
+    }
+
+    /**
+     * Send Error to Client.
+     *
+     * @method _sendErrorToClient
+     * @private
+     */
+    private _sendErrorToClient(error : any) {
+        this.socket.emit("sourceConnectionDescription", this.formatResponse(false, error));
     }
 
     /**
