@@ -18,6 +18,15 @@ class CallsNamespaceManager extends NamespaceManager {
      */
     private _callId: number;
 
+	/**
+	 * User's id.
+	 *
+	 * @property _userId
+	 * @private
+	 * @type number
+	 */
+	private _userId: number;
+
     /**
      * Backend socket.
      *
@@ -45,6 +54,15 @@ class CallsNamespaceManager extends NamespaceManager {
      */
     private _params : Object;
 
+	/**
+	 * OAuthKey param.
+	 *
+	 * @property _oauthKeyValue
+	 * @private
+	 * @type string
+	 */
+	private _oauthKeyValue : string;
+
     /**
      * Source ParamTypes Description.
      *
@@ -61,25 +79,7 @@ class CallsNamespaceManager extends NamespaceManager {
      * @private
      * @type string
      */
-    private _sourceHost : string;
-
-    /**
-     * Source port.
-     *
-     * @property _sourcePort
-     * @private
-     * @type string
-     */
-    private _sourcePort : string;
-
-    /**
-     * Source service.
-     *
-     * @property _sourceService
-     * @private
-     * @type string
-     */
-    private _sourceService : string;
+    private _serviceHost : string;
 
     /**
      * Source name.
@@ -88,7 +88,7 @@ class CallsNamespaceManager extends NamespaceManager {
      * @private
      * @type string
      */
-    private _sourceName : string;
+    private _sourceMethod : string;
 
     /**
      * State of retrieving source information.
@@ -144,6 +144,14 @@ class CallsNamespaceManager extends NamespaceManager {
      */
     private _sourceDescription : any;
 
+	/**
+	 * OAuthKey description.
+	 *
+	 * @property _oauthKeyDescription
+	 * @type any
+	 */
+	private _oauthKeyDescription : any;
+
     /**
      * Source Connection description (host and hash).
      *
@@ -162,7 +170,9 @@ class CallsNamespaceManager extends NamespaceManager {
         super(socket);
 
         this._params = new Object();
+		this._oauthKeyValue = null;
         this._callId = null;
+		this._userId = null;
         this._paramsLength = 0;
         this._sourceReady = false;
         this._paramsReady = new Object();
@@ -170,6 +180,7 @@ class CallsNamespaceManager extends NamespaceManager {
         this._callDescription = null;
         this._callTypeDescription = null;
         this._sourceDescription = null;
+		this._oauthKeyDescription = null;
 
         this._sourceConnectionDescription = null;
 
@@ -185,13 +196,14 @@ class CallsNamespaceManager extends NamespaceManager {
      */
     processCallId(callIdDescription : any, self : CallsNamespaceManager = null) {
         Logger.debug("Step 1.0 : callIdDescription : " + JSON.stringify(callIdDescription));
-        //callId - The new call description : {id : number}
+        //callId - The new call description : {id : number, userId : number}
 
         if(self == null) {
             self = this;
         }
 
         self._callId = callIdDescription.id;
+		self._userId = callIdDescription.userId;
 
         self._connectToBackend();
     }
@@ -305,6 +317,15 @@ class CallsNamespaceManager extends NamespaceManager {
                 self._sendErrorToClient(error);
             });
         });
+
+		this._backendSocket.on("OAuthKeyDescription", function(response) {
+			self.manageServerResponse(response, function(oauthkeyDescription) {
+				self.oauthKeyDescriptionProcess(oauthkeyDescription);
+			}, function(error) {
+				Logger.error(error);
+				self._sendErrorToClient(error);
+			});
+		});
     }
 
     /**
@@ -323,7 +344,11 @@ class CallsNamespaceManager extends NamespaceManager {
             } else { // Step 4.1.1 : done
                 if(this._sourceDescription == null) {
                     this._retrieveSourceDescription();
-                } // else // Step 4.1.3 : done
+                } else { // Step 4.1.3 : done
+					if(this._sourceDescription.service.oauth && this._oauthKeyDescription == null) {
+						this._retrieveOAuthKey();
+					} // else // Step 4.1.5 : done
+				}
             }
 
             for(var iParamReady in this._paramsReady) {
@@ -434,17 +459,50 @@ class CallsNamespaceManager extends NamespaceManager {
             this._sourceParamTypesDescription = sourceDescription.paramTypes;
         }
 
-        if(typeof(sourceDescription.host) != "undefined" && typeof(sourceDescription.port) != "undefined" && typeof(sourceDescription.service) != "undefined" && typeof(sourceDescription.name) != "undefined") {
-            this._sourceHost = sourceDescription.host;
-            this._sourcePort = sourceDescription.port;
-            this._sourceService = sourceDescription.service;
-            this._sourceName = sourceDescription.name;
+        if(typeof(sourceDescription.service) != "undefined" && typeof(sourceDescription.method) != "undefined") {
+            this._serviceHost = sourceDescription.service.host;
+            this._sourceMethod = sourceDescription.method;
 
             this._sourceReady = true;
+
+			if(sourceDescription.service.oauth) {
+				this._retrieveOAuthKey();
+			}
 
             this._connectToSource();
         }
     }
+
+	/**
+	 * Step 4.1.5 : Retrieve the OAuthKey Description
+	 *
+	 * @method _retrieveOAuthKey
+	 * @private
+	 */
+	private _retrieveOAuthKey() {
+		Logger.debug("Step 4.1.5 : _retrieveOAuthKey");
+
+		this._backendSocket.emit("RetrieveOAuthKeyDescription", {"userId" : this._userId, "serviceId" : this._sourceDescription.service.id});
+	}
+
+	/**
+	 * Step 4.1.6 : Process the OAuthKey Description
+	 *
+	 * @method oauthKeyDescriptionProcess
+	 * @param {JSON Object} oauthKeyDescription - The oauthKey's description to process
+	 */
+	oauthKeyDescriptionProcess(oauthKeyDescription : any) {
+		this._oauthKeyDescription = oauthKeyDescription;
+		var self = this;
+
+		Logger.debug("Step 4.1.6 : sourceDescriptionProcess");
+
+		if(typeof(oauthKeyDescription.value) != "undefined") {
+			this._oauthKeyValue = oauthKeyDescription.value;
+
+			this._connectToSource();
+		}
+	}
 
     /**
      * Step 4.2.1 : Retrieve the ParamValue Description
@@ -496,7 +554,16 @@ class CallsNamespaceManager extends NamespaceManager {
             paramsReadyLength++;
         }
 
-        if(this._sourceReady && paramsOk && (paramsReadyLength == this._paramsLength || this._paramsLength == 0)) {
+		var oauthKeyOk = false;
+		if(this._sourceReady && this._sourceDescription.service.oauth) {
+			if(this._oauthKeyValue != null) {
+				oauthKeyOk = true;
+			}
+		} else {
+			oauthKeyOk = true;
+		}
+
+        if(this._sourceReady && paramsOk && (paramsReadyLength == this._paramsLength || this._paramsLength == 0) && oauthKeyOk) {
 
             for (var iParamTypes in this._sourceParamTypesDescription) {
                 var paramTypeDescription = this._sourceParamTypesDescription[iParamTypes];
@@ -509,7 +576,7 @@ class CallsNamespaceManager extends NamespaceManager {
                 }
             }
 
-            this._sourceSocket = socketIOClient('http://' + this._sourceHost + ':' + this._sourcePort + '/' + this._sourceService,
+            this._sourceSocket = socketIOClient(this._serviceHost,
                 {"reconnection" : true, 'reconnectionAttempts' : 10, "reconnectionDelay" : 1000, "reconnectionDelayMax" : 5000, "timeout" : 5000, "autoConnect" : true, "multiplex": false});
             this._listeningFromSource();
             this._sourceSocket.on("connect", function () {
@@ -556,7 +623,13 @@ class CallsNamespaceManager extends NamespaceManager {
      */
     private _manageSourceConnection() {
         if(this._sourceConnectionDescription == null) {
-            this._sourceSocket.emit(this._sourceName, this._params);
+			var completeParams = this._params;
+
+			if(this._sourceDescription.service.oauth) {
+				completeParams["oauthKey"] = this._oauthKeyValue;
+			}
+
+            this._sourceSocket.emit(this._sourceMethod, completeParams);
         } // else // Step 5.2 and 5.3 : done.
     }
 
@@ -575,7 +648,7 @@ class CallsNamespaceManager extends NamespaceManager {
                 Logger.info("Received connection hash. => " + connectionHash.hash);
 
                 var sourceConnectionDescription = new Object();
-                sourceConnectionDescription["url"] = 'http://' + self._sourceHost + ':' + self._sourcePort + '/' + self._sourceService;
+                sourceConnectionDescription["url"] = self._serviceHost;
                 sourceConnectionDescription["hash"] = connectionHash.hash;
 
                 self._sourceConnectionDescription = sourceConnectionDescription;
