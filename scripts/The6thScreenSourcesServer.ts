@@ -38,7 +38,7 @@ class The6thScreenSourcesServer extends Server {
  * @type number
  * @private
  */
-var _SourcesServerListeningPort : number = process.env.PORT_SOURCESSERVER || 5000;
+var _SourcesServerListeningPort : number = process.env.PORT || 5000;
 
 /**
  * Server's SourcesServer command line arguments.
