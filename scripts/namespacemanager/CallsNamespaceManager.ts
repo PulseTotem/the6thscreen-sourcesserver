@@ -218,11 +218,11 @@ class CallsNamespaceManager extends NamespaceManager {
         Logger.debug("Step 2.1 : _connectToBackend");
         var self = this;
 
-		var backendUrl = process.env.BACKEND_URL || 'http://localhost:4000/sources';
+		var backendUrl = process.env.BACKEND_URL || 'http://localhost:4000';
 
         try {
 
-            this._backendSocket = socketIOClient(backendUrl,
+            this._backendSocket = socketIOClient(backendUrl + '/sources',
                 {"reconnection": true, "reconnectionDelay": 1000, "reconnectionDelayMax": 5000, "timeout": 10000, "autoConnect": true, "reconnectionAttempts": 10, "multiplex": false});
 
         } catch(e) {
