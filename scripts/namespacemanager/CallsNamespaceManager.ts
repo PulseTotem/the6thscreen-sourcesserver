@@ -690,9 +690,14 @@ class CallsNamespaceManager extends NamespaceManager {
      * @method onDisconnection
      */
     onDisconnection() {
-        //Disconnection from Backend
-        this._backendSocket.disconnect();
-        //Disconnection from Source
-        this._sourceSocket.disconnect();
+		if(typeof(this._backendSocket) != "undefined" && this._backendSocket != null) {
+			//Disconnection from Backend
+			this._backendSocket.disconnect();
+		}
+
+		if(typeof(this._sourceSocket) != "undefined" && this._sourceSocket != null) {
+			//Disconnection from Source
+			this._sourceSocket.disconnect();
+		}
     }
 }
