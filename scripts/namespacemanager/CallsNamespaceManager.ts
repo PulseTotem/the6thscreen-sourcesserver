@@ -18,15 +18,6 @@ class CallsNamespaceManager extends NamespaceManager {
      */
     private _callId: number;
 
-	/**
-	 * User's id.
-	 *
-	 * @property _userId
-	 * @private
-	 * @type number
-	 */
-	private _userId: number;
-
     /**
      * Backend socket.
      *
@@ -172,7 +163,6 @@ class CallsNamespaceManager extends NamespaceManager {
         this._params = new Object();
 		this._oauthKeyValue = null;
         this._callId = null;
-		this._userId = null;
         this._paramsLength = 0;
         this._sourceReady = false;
         this._paramsReady = new Object();
@@ -196,14 +186,13 @@ class CallsNamespaceManager extends NamespaceManager {
      */
     processCallId(callIdDescription : any, self : CallsNamespaceManager = null) {
         Logger.debug("Step 1.0 : callIdDescription : " + JSON.stringify(callIdDescription));
-        //callId - The new call description : {id : number, userId : number}
+        //callId - The new call description : {id : number}
 
         if(self == null) {
             self = this;
         }
 
         self._callId = callIdDescription.id;
-		self._userId = callIdDescription.userId;
 
         self._connectToBackend();
     }
@@ -319,15 +308,6 @@ class CallsNamespaceManager extends NamespaceManager {
                 self._sendErrorToClient(error);
             });
         });
-
-		this._backendSocket.on("OAuthKeyDescription", function(response) {
-			self.manageServerResponse(response, function(oauthkeyDescription) {
-				self.oauthKeyDescriptionProcess(oauthkeyDescription);
-			}, function(error) {
-				Logger.error(error);
-				self._sendErrorToClient(error);
-			});
-		});
     }
 
     /**
@@ -346,11 +326,7 @@ class CallsNamespaceManager extends NamespaceManager {
             } else { // Step 4.1.1 : done
                 if(this._sourceDescription == null) {
                     this._retrieveSourceDescription();
-                } else { // Step 4.1.3 : done
-					if(this._sourceDescription.service.oauth && this._oauthKeyDescription == null) {
-						this._retrieveOAuthKey();
-					} // else // Step 4.1.5 : done
-				}
+                } // else // Step 4.1.3 : done
             }
 
             for(var iParamReady in this._paramsReady) {
@@ -468,7 +444,7 @@ class CallsNamespaceManager extends NamespaceManager {
             this._sourceReady = true;
 
 			if(sourceDescription.service.oauth) {
-				this._oauthKeyDescription = this._callTypeDescription.oAuthKey;
+				this._oauthKeyDescription = this._callDescription.oAuthKey;
 				this._oauthKeyValue = this._oauthKeyDescription.value;
 			}
 
