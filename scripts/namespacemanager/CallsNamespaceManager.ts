@@ -468,43 +468,13 @@ class CallsNamespaceManager extends NamespaceManager {
             this._sourceReady = true;
 
 			if(sourceDescription.service.oauth) {
-				this._retrieveOAuthKey();
+				this._oauthKeyDescription = this._callTypeDescription.oAuthKey;
+				this._oauthKeyValue = this._oauthKeyDescription.value;
 			}
 
             this._connectToSource();
         }
     }
-
-	/**
-	 * Step 4.1.5 : Retrieve the OAuthKey Description
-	 *
-	 * @method _retrieveOAuthKey
-	 * @private
-	 */
-	private _retrieveOAuthKey() {
-		Logger.debug("Step 4.1.5 : _retrieveOAuthKey");
-
-		this._backendSocket.emit("RetrieveOAuthKeyDescription", {"userId" : this._userId, "serviceId" : this._sourceDescription.service.id});
-	}
-
-	/**
-	 * Step 4.1.6 : Process the OAuthKey Description
-	 *
-	 * @method oauthKeyDescriptionProcess
-	 * @param {JSON Object} oauthKeyDescription - The oauthKey's description to process
-	 */
-	oauthKeyDescriptionProcess(oauthKeyDescription : any) {
-		this._oauthKeyDescription = oauthKeyDescription;
-		var self = this;
-
-		Logger.debug("Step 4.1.6 : sourceDescriptionProcess");
-
-		if(typeof(oauthKeyDescription.value) != "undefined") {
-			this._oauthKeyValue = oauthKeyDescription.value;
-
-			this._connectToSource();
-		}
-	}
 
     /**
      * Step 4.2.1 : Retrieve the ParamValue Description
