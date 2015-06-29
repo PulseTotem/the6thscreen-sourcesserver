@@ -370,6 +370,8 @@ class CallsNamespaceManager extends NamespaceManager {
 				completeParams["oauthKey"] = this._callDescription.oAuthKey.value;
 			}
 
+			completeParams["refreshTime"] = this._callDescription.callType.source.refreshTime;
+
 			this._sourceSocket.emit(this._callDescription.callType.source.method, completeParams);
 		} else {
 			this._disconnectFromSource();
