@@ -45,69 +45,6 @@ class CallsNamespaceManager extends NamespaceManager {
      */
     private _params : Object;
 
-	/**
-	 * OAuthKey param.
-	 *
-	 * @property _oauthKeyValue
-	 * @private
-	 * @type string
-	 */
-	private _oauthKeyValue : string;
-
-    /**
-     * Source ParamTypes Description.
-     *
-     * @property _sourceParamTypesDescription
-     * @private
-     * @type any
-     */
-    private _sourceParamTypesDescription: any;
-
-    /**
-     * Source host.
-     *
-     * @property _sourceHost
-     * @private
-     * @type string
-     */
-    private _serviceHost : string;
-
-    /**
-     * Source name.
-     *
-     * @property _sourceName
-     * @private
-     * @type string
-     */
-    private _sourceMethod : string;
-
-    /**
-     * State of retrieving source information.
-     *
-     * @property _sourceReady
-     * @private
-     * @type boolean
-     */
-    private _sourceReady : boolean;
-
-    /**
-     * State of retrieving params values.
-     *
-     * @property _paramsReady
-     * @private
-     * @type Object
-     */
-    private _paramsReady : Object;
-
-    /**
-     * Number of Params.
-     *
-     * @property _paramsLength
-     * @private
-     * @type number
-     */
-    private _paramsLength : number;
-
 
     ///////////// Variables to manage process connection with Sources Server and Source ///////////
 
@@ -118,30 +55,6 @@ class CallsNamespaceManager extends NamespaceManager {
      * @type any
      */
     private _callDescription : any;
-
-    /**
-     * CallType description.
-     *
-     * @property _callTypeDescription
-     * @type any
-     */
-    private _callTypeDescription : any;
-
-    /**
-     * Source description.
-     *
-     * @property _sourceDescription
-     * @type any
-     */
-    private _sourceDescription : any;
-
-	/**
-	 * OAuthKey description.
-	 *
-	 * @property _oauthKeyDescription
-	 * @type any
-	 */
-	private _oauthKeyDescription : any;
 
     /**
      * Source Connection description (host and hash).
@@ -160,37 +73,43 @@ class CallsNamespaceManager extends NamespaceManager {
     constructor(socket : any) {
         super(socket);
 
-        this._params = new Object();
-		this._oauthKeyValue = null;
         this._callId = null;
-        this._paramsLength = 0;
-        this._sourceReady = false;
-        this._paramsReady = new Object();
 
         this._callDescription = null;
-        this._callTypeDescription = null;
-        this._sourceDescription = null;
-		this._oauthKeyDescription = null;
+
+		this._params = new Object();
 
         this._sourceConnectionDescription = null;
 
-        this.addListenerToSocket('callId', this.processCallId);
+
+		this._listeningFromClient();
     }
+
+	/**
+	 * Step 0 : Listen from Client.
+	 *
+	 * @method _listeningFromClient
+	 * @private
+	 */
+	private _listeningFromClient() {
+		Logger.debug("Step 0 : _listeningFromClient");
+		var self = this;
+
+		this.addListenerToSocket('callId', function(callIdDescription) { self._processCallId(callIdDescription); });
+	}
 
     /**
      * Step 1.0 : Process Call Id.
      *
      * @method processCallId
+	 * @private
      * @param {any} callIdDescription - The callId.
-     * @param {CallsNamespaceManager} self - The CallsNamespaceManager instance.
      */
-    processCallId(callIdDescription : any, self : CallsNamespaceManager = null) {
+    private _processCallId(callIdDescription : any) {
         Logger.debug("Step 1.0 : callIdDescription : " + JSON.stringify(callIdDescription));
         //callId - The new call description : {id : number}
 
-        if(self == null) {
-            self = this;
-        }
+		var self = this;
 
         self._callId = callIdDescription.id;
 
@@ -210,7 +129,6 @@ class CallsNamespaceManager extends NamespaceManager {
 		var backendUrl = process.env.BACKEND_URL || 'http://localhost:4000';
 
         try {
-
             this._backendSocket = socketIOClient(backendUrl + '/sources',
                 {"reconnection": true, "reconnectionDelay": 1000, "reconnectionDelayMax": 5000, "timeout": 10000, "autoConnect": true, "reconnectionAttempts": 10, "multiplex": false});
 
@@ -227,7 +145,7 @@ class CallsNamespaceManager extends NamespaceManager {
         });
 
         this._backendSocket.on("error", function(errorData) {
-            Logger.error("An error occurred during connection to Backend.");
+            Logger.error("Error : An error occurred during connection to Backend.");
             Logger.debug(errorData);
         });
 
@@ -248,20 +166,34 @@ class CallsNamespaceManager extends NamespaceManager {
         });
 
         this._backendSocket.on("reconnect_error", function(errorData) {
-            Logger.error("An error occurred during reconnection to Backend.");
+            Logger.error("Reconnect Error : An error occurred during reconnection to Backend.");
             Logger.debug(errorData);
         });
 
         this._backendSocket.on("reconnect_failed", function() {
-            Logger.error("Failed to connect to Backend. No new attempt will be done.");
-            self._sendErrorToClient(new Error("Fail to connect to Backend."));
-        });
+            Logger.error("Failed to connect to Backend. New attempt will be done in 5 seconds. Administrators received an Alert !");
+            //TODO: Send an email and Notification to Admins !
 
-        this._backendSocket.on("message", function(msg) {
-            Logger.info("Received new message from backend.");
-            Logger.debug(msg);
+			setTimeout(function() {
+				self._backendSocket = null;
+				self._connectToBackend();
+			}, 5000);
         });
     }
+
+	/**
+	 * Disconnection from Backend.
+	 *
+	 * @method _disconnectFromBackend
+	 * @private
+	 */
+	private _disconnectFromBackend() {
+		if(typeof(this._backendSocket) != "undefined" && this._backendSocket != null) {
+			//Disconnection from Backend
+			this._backendSocket.disconnect();
+			this._backendSocket = null;
+		} // else // Nothing to do...
+	}
 
     /**
      * Step 2.2 : Listen from Backend answers.
@@ -281,33 +213,6 @@ class CallsNamespaceManager extends NamespaceManager {
                 self._sendErrorToClient(error);
             });
         });
-
-        this._backendSocket.on("CallTypeDescription", function(response) {
-            self.manageServerResponse(response, function(callTypeDescription) {
-                self.callTypeDescriptionProcess(callTypeDescription);
-            }, function(error) {
-                Logger.error(error);
-                self._sendErrorToClient(error);
-            });
-        });
-
-        this._backendSocket.on("SourceDescription", function(response) {
-            self.manageServerResponse(response, function(sourceDescription) {
-                self.sourceDescriptionProcess(sourceDescription);
-            }, function(error) {
-                Logger.error(error);
-                self._sendErrorToClient(error);
-            });
-        });
-
-        this._backendSocket.on("ParamValueDescription", function(response) {
-            self.manageServerResponse(response, function(paramValueDescription) {
-                self.paramValueDescriptionProcess(paramValueDescription);
-            }, function(error) {
-                Logger.error(error);
-                self._sendErrorToClient(error);
-            });
-        });
     }
 
     /**
@@ -318,22 +223,11 @@ class CallsNamespaceManager extends NamespaceManager {
      */
     private _manageBackendConnection() {
         Logger.debug("Step 2.3 : _manageBackendConnection");
+
         if(this._callDescription == null) {
             this._retrieveCallDescription();
         } else { // Step 3.1 : done.
-            if(this._callTypeDescription == null) {
-                this._retrieveCallTypeDescription();
-            } else { // Step 4.1.1 : done
-                if(this._sourceDescription == null) {
-                    this._retrieveSourceDescription();
-                } // else // Step 4.1.3 : done
-            }
-
-            for(var iParamReady in this._paramsReady) {
-                if(! this._paramsReady[iParamReady]) {
-                    this._retrieveParamValueDescription(iParamReady);
-                } // else // Step 4.2.1 : done
-            }
+            this._disconnectFromBackend();
         }
     }
 
@@ -359,209 +253,107 @@ class CallsNamespaceManager extends NamespaceManager {
         Logger.debug("Step 3.2 : callDescriptionProcess");
         var self = this;
 
-        this._retrieveCallTypeDescription();
+		this._disconnectFromBackend();
 
-        if(typeof(callDescription.paramValues) != "undefined") {
-            this._paramsLength = callDescription.paramValues.length;
-            ForEachAsync.forEach(callDescription.paramValues, function(iParamValue) {
-                var paramValue = callDescription.paramValues[iParamValue];
-                var paramValueId = paramValue["id"];
-
-                if(typeof(self._paramsReady[paramValueId]) == "undefined") {
-                    self._paramsReady[paramValueId] = false;
-
-                    self._retrieveParamValueDescription(paramValueId);
-                }
-            });
-        }
+		this._connectToSource();
     }
 
     /**
-     * Step 4.1.1 : Retrieve the CallType Description
-     *
-     * @method _retrieveCallTypeDescription
-     * @private
-     */
-    private _retrieveCallTypeDescription() {
-        Logger.debug("Step 4.1.1 : _retrieveCallTypeDescription");
-        if(typeof(this._callDescription.callType) != "undefined") {
-            var callTypeId = this._callDescription.callType["id"];
-
-            this._backendSocket.emit("RetrieveCallTypeDescription", {"callTypeId" : callTypeId});
-        }
-    }
-
-    /**
-     * Step 4.1.2 : Process the CallType Description
-     *
-     * @method callTypeDescriptionProcess
-     * @param {JSON Object} callTypeDescription - The callType's description to process
-     */
-    callTypeDescriptionProcess(callTypeDescription : any) {
-        this._callTypeDescription = callTypeDescription;
-        var self = this;
-
-        Logger.debug("Step 4.1.2 : callTypeDescriptionProcess");
-
-        this._retrieveSourceDescription();
-    }
-
-    /**
-     * Step 4.1.3 : Retrieve the Source Description
-     *
-     * @method _retrieveSourceDescription
-     * @private
-     */
-    private _retrieveSourceDescription() {
-        Logger.debug("Step 4.1.3 : _retrieveSourceDescription");
-        if(typeof(this._callTypeDescription.source) != "undefined") {
-            var sourceId = this._callTypeDescription.source["id"];
-
-            this._backendSocket.emit("RetrieveSourceDescription", {"sourceId" : sourceId});
-        }
-    }
-
-    /**
-     * Step 4.1.4 : Process the Source Description
-     *
-     * @method sourceDescriptionProcess
-     * @param {JSON Object} sourceDescription - The source's description to process
-     */
-    sourceDescriptionProcess(sourceDescription : any) {
-        this._sourceDescription = sourceDescription;
-        var self = this;
-
-        Logger.debug("Step 4.1.4 : sourceDescriptionProcess");
-
-        if(typeof(sourceDescription.paramTypes) != "undefined") {
-            this._sourceParamTypesDescription = sourceDescription.paramTypes;
-        }
-
-        if(typeof(sourceDescription.service) != "undefined" && typeof(sourceDescription.method) != "undefined") {
-            this._serviceHost = sourceDescription.service.host;
-            this._sourceMethod = sourceDescription.method;
-
-            this._sourceReady = true;
-
-			if(sourceDescription.service.oauth) {
-				this._oauthKeyDescription = this._callDescription.oAuthKey;
-				this._oauthKeyValue = this._oauthKeyDescription.value;
-			}
-
-            this._connectToSource();
-        }
-    }
-
-    /**
-     * Step 4.2.1 : Retrieve the ParamValue Description
-     *
-     * @method _retrieveParamValueDescription
-     * @private
-     * @param {number} paramValueId - The ParamValue's Id to retrieve.
-     */
-    private _retrieveParamValueDescription(paramValueId : number) {
-        Logger.debug("Step 4.2.1 : _retrieveParamValueDescription");
-
-        this._backendSocket.emit("RetrieveParamValueDescription", {"paramValueId": paramValueId});
-    }
-
-    /**
-     * Step 4.2.2 : Process the ParamValue Description
-     *
-     * @method paramValueDescriptionProcess
-     * @param {JSON Object} paramValueDescription - The paramValue's description to process
-     * @param {string} value - The paramValue's value
-     */
-    paramValueDescriptionProcess(paramValueDescription : any) {
-        Logger.debug("Step 4.2.2 : paramValueDescriptionProcess");
-
-        if(typeof(paramValueDescription.paramType) != "undefined" && typeof(paramValueDescription.paramType.name) != "undefined"  && typeof(paramValueDescription.value) != "undefined") {
-            this._params[paramValueDescription.paramType.name] = paramValueDescription.value;
-
-            this._paramsReady[paramValueDescription.id] = true;
-
-            this._connectToSource();
-        }
-    }
-
-    /**
-     * Step 5.1 : Connection to Source.
+     * Step 4.1 : Connection to Source.
      *
      * @method _connectToSource
      * @private
      */
     private _connectToSource() {
-        Logger.debug("Step 5.1 : _connectToSource");
+        Logger.debug("Step 4.1 : _connectToSource");
         var self = this;
 
-        var paramsOk = true;
-        var paramsReadyLength = 0;
+		self._params = new Object();
 
-        for(var iPR in this._paramsReady) {
-            paramsOk = paramsOk && this._paramsReady[iPR];
-            paramsReadyLength++;
-        }
+		self._callDescription.paramValues.forEach(function(paramValueDescription) {
+			self._params[paramValueDescription.paramType.name] = paramValueDescription.value;
+		});
 
-		var oauthKeyOk = false;
-		if(this._sourceReady && this._sourceDescription.service.oauth) {
-			if(this._oauthKeyValue != null) {
-				oauthKeyOk = true;
+		var paramValuesOk = true;
+
+		self._callDescription.callType.source.paramTypes.forEach(function(paramTypeDescription) {
+			if(typeof(self._params[paramTypeDescription.name]) == "undefined") {
+				paramValuesOk = false;
 			}
-		} else {
-			oauthKeyOk = true;
+		});
+
+		if(! paramValuesOk) {
+			Logger.error("Error --> A value for paramType is missing...");
+			self._sendErrorToClient(new Error("Fail to connect to Source because a value for a ParamType is missing."));
+			//TODO : Error --> A value for paramType is missing...
+			return;
 		}
 
-        if(this._sourceReady && paramsOk && (paramsReadyLength == this._paramsLength || this._paramsLength == 0) && oauthKeyOk) {
+		try {
+			this._sourceSocket = socketIOClient(this._callDescription.callType.source.service.host,
+				{"reconnection" : true, 'reconnectionAttempts' : 10, "reconnectionDelay" : 1000, "reconnectionDelayMax" : 5000, "timeout" : 5000, "autoConnect" : true, "multiplex": false});
 
-            for (var iParamTypes in this._sourceParamTypesDescription) {
-                var paramTypeDescription = this._sourceParamTypesDescription[iParamTypes];
-                if(typeof(paramTypeDescription.name) != "undefined") {
-                    if(typeof(this._params[paramTypeDescription.name]) == "undefined") {
-                        Logger.error("Error --> A value for paramType is missing...");
-                        self._sendErrorToClient(new Error("Fail to connect to Service because a value for a ParamType is missing."));
-                        //TODO : Error --> A value for paramType is missing...
-                    }
-                }
-            }
+		} catch(e) {
+			Logger.error("Connect To Source error");
+			Logger.error(e.message);
+			self._sendErrorToClient(e);
+		}
 
-            this._sourceSocket = socketIOClient(this._serviceHost,
-                {"reconnection" : true, 'reconnectionAttempts' : 10, "reconnectionDelay" : 1000, "reconnectionDelayMax" : 5000, "timeout" : 5000, "autoConnect" : true, "multiplex": false});
-            this._listeningFromSource();
-            this._sourceSocket.on("connect", function () {
-                Logger.info("Connected to Service.");
-                self._manageSourceConnection();
-            });
+		this._listeningFromSource();
 
-            this._sourceSocket.on("error", function (errorData) {
-                Logger.error("An error occurred during connection to Service.");
-            });
+		this._sourceSocket.on("connect", function () {
+			Logger.info("Connected to Source.");
+			self._manageSourceConnection();
+		});
 
-            this._sourceSocket.on("disconnect", function () {
-                Logger.info("Disconnected to Service.");
-            });
+		this._sourceSocket.on("error", function (errorData) {
+			Logger.error("An error occurred during connection to Source.");
+		});
 
-            this._sourceSocket.on("reconnect", function (attemptNumber) {
-                Logger.info("Connected to Service after " + attemptNumber + " attempts.");
-            });
+		this._sourceSocket.on("disconnect", function () {
+			Logger.info("Disconnected to Source.");
+		});
 
-            this._sourceSocket.on("reconnect_attempt", function () {
-                Logger.info("Reconnect attempt to Service.");
-            });
+		this._sourceSocket.on("reconnect", function (attemptNumber) {
+			Logger.info("Connected to Source after " + attemptNumber + " attempts.");
+		});
 
-            this._sourceSocket.on("reconnecting", function (attemptNumber) {
-                Logger.info("Trying to connect to Service - Attempt number " + attemptNumber + ".");
-            });
+		this._sourceSocket.on("reconnect_attempt", function () {
+			Logger.info("Reconnect attempt to Source.");
+		});
 
-            this._sourceSocket.on("reconnect_error", function (errorData) {
-                Logger.error("An error occurred during reconnection to Service.");
-            });
+		this._sourceSocket.on("reconnecting", function (attemptNumber) {
+			Logger.info("Trying to connect to Source - Attempt number " + attemptNumber + ".");
+		});
 
-            this._sourceSocket.on("reconnect_failed", function () {
-                Logger.error("Failed to connect to Service. No new attempt will be done.");
-                self._sendErrorToClient(new Error("Fail to connect to Service."));
-            });
-        }
+		this._sourceSocket.on("reconnect_error", function (errorData) {
+			Logger.error("An error occurred during reconnection to Source.");
+		});
+
+		this._sourceSocket.on("reconnect_failed", function () {
+			Logger.error("Failed to connect to Source. New attempt will be done in 5 seconds. Administrators received an Alert !");
+			//TODO: Send an email and Notification to Admins !
+
+			setTimeout(function() {
+				self._sourceSocket = null;
+				self._connectToSource();
+			}, 5000);
+		});
     }
+
+	/**
+	 * Disconnection from Source.
+	 *
+	 * @method _disconnectFromSource
+	 * @private
+	 */
+	private _disconnectFromSource() {
+		if(typeof(this._sourceSocket) != "undefined" && this._sourceSocket != null) {
+			//Disconnection from Source
+			this._sourceSocket.disconnect();
+			this._sourceSocket = null;
+		} // else // Nothing to do...
+	}
 
     /**
      * Manage connection to Source.
@@ -570,19 +362,22 @@ class CallsNamespaceManager extends NamespaceManager {
      * @private
      */
     private _manageSourceConnection() {
-        if(this._sourceConnectionDescription == null) {
+
+		if(this._sourceConnectionDescription == null) {
 			var completeParams = this._params;
 
-			if(this._sourceDescription.service.oauth) {
-				completeParams["oauthKey"] = this._oauthKeyValue;
+			if (this._callDescription.callType.source.service.oauth) {
+				completeParams["oauthKey"] = this._callDescription.oAuthKey.value;
 			}
 
-            this._sourceSocket.emit(this._sourceMethod, completeParams);
-        } // else // Step 5.2 and 5.3 : done.
+			this._sourceSocket.emit(this._callDescription.callType.source.method, completeParams);
+		} else {
+			this._disconnectFromSource();
+		}
     }
 
     /**
-     * Step 5.2 : Listen from Source answers.
+     * Step 4.2 : Listen from Source answers.
      *
      * @method _listeningFromSource
      * @private
@@ -596,10 +391,12 @@ class CallsNamespaceManager extends NamespaceManager {
                 Logger.info("Received connection hash. => " + connectionHash.hash);
 
                 var sourceConnectionDescription = new Object();
-                sourceConnectionDescription["url"] = self._serviceHost;
+                sourceConnectionDescription["url"] = self._callDescription.callType.source.service.host;
                 sourceConnectionDescription["hash"] = connectionHash.hash;
 
                 self._sourceConnectionDescription = sourceConnectionDescription;
+
+				self._disconnectFromSource();
 
                 self._sendSourceConnectionDescription();
             }, function(error) {
@@ -611,7 +408,7 @@ class CallsNamespaceManager extends NamespaceManager {
     }
 
     /**
-     * Step 5.3 : Send Source Connection Description to Client.
+     * Step 4.3 : Send Source Connection Description to Client.
      *
      * @method _sendSourceConnectionDescription
      * @private
@@ -636,14 +433,8 @@ class CallsNamespaceManager extends NamespaceManager {
      * @method onDisconnection
      */
     onDisconnection() {
-		if(typeof(this._backendSocket) != "undefined" && this._backendSocket != null) {
-			//Disconnection from Backend
-			this._backendSocket.disconnect();
-		}
+		this._disconnectFromBackend();
 
-		if(typeof(this._sourceSocket) != "undefined" && this._sourceSocket != null) {
-			//Disconnection from Source
-			this._sourceSocket.disconnect();
-		}
+		this._disconnectFromSource();
     }
 }
