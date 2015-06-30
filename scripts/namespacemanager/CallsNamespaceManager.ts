@@ -155,6 +155,7 @@ class CallsNamespaceManager extends NamespaceManager {
 
         this._backendSocket.on("reconnect", function(attemptNumber) {
             Logger.info("Connected to Backend after " + attemptNumber + " attempts.");
+			self._manageBackendConnection();
         });
 
         this._backendSocket.on("reconnect_attempt", function() {
@@ -316,6 +317,7 @@ class CallsNamespaceManager extends NamespaceManager {
 
 		this._sourceSocket.on("reconnect", function (attemptNumber) {
 			Logger.info("Connected to Source after " + attemptNumber + " attempts.");
+			self._manageSourceConnection();
 		});
 
 		this._sourceSocket.on("reconnect_attempt", function () {
