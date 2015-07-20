@@ -47,7 +47,7 @@ module.exports = function (grunt) {
                 ]
             },
             packageHeroku: {
-              src: ['packageHeroku.json'],
+              src: ['t6s-core/core-backend/package.json','packageHeroku.json'],
               dest: 'heroku/package.json',
               fields: [
                 'name',
