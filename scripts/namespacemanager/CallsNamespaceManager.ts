@@ -283,8 +283,8 @@ class CallsNamespaceManager extends NamespaceManager {
 			}
 		});
 
-        self._params["serviceLogo"] = self._callDescription.source.service.logo;
-        self._params["serviceName"] = self._callDescription.source.service.name;
+        self._params["serviceLogo"] = self._callDescription.callType.source.service.logo;
+        self._params["serviceName"] = self._callDescription.callType.source.service.name;
 
 		if(! paramValuesOk) {
 			Logger.error("Error --> A value for paramType is missing...");
