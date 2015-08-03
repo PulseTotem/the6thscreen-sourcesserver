@@ -183,6 +183,45 @@ module.exports = function (grunt) {
 // ---------------------------------------------
 
 // ---------------------------------------------
+//                                 test tasks
+// ---------------------------------------------
+        mochaTest: {
+            test: {
+                options: {
+                    reporter: 'spec',
+                    colors: true,
+                    captureFile: 'build/tests/result.txt'
+                },
+                src: ['build/tests/Test.js']
+            },
+            jenkins: {
+                options: {
+                    reporter: 'mocha-jenkins-reporter',
+                    quiet: true,
+                    reporterOptions: {
+                        "junit_report_name": "Tests",
+                        "junit_report_path": "build/tests/report.xml",
+                        "junit_report_stack": 1
+                    }
+                },
+                src: ['build/tests/Test.js']
+            }
+        },
+
+        mocha_istanbul: {
+            coverage: {
+                src: 'build/tests/', // a folder works nicely
+                options: {
+                    mask: '*.js',
+                    root: 'build/tests/',
+                    reportFormats: ['cobertura', 'html'],
+                    coverageFolder: 'build/coverage'
+                }
+            },
+        },
+// ---------------------------------------------
+
+// ---------------------------------------------
 //                                    clean task
 // ---------------------------------------------
         clean: {

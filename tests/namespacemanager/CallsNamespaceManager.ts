@@ -3,6 +3,7 @@
  */
 
 /// <reference path="../../t6s-core/core-backend/t6s-core/core/libsdef/mocha.d.ts" />
+/// <reference path="../../scripts/namespacemanager/CallsNamespaceManager.ts" />
 
 var assert = require("assert");
 
