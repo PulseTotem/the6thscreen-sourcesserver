@@ -261,7 +261,7 @@ module.exports = function (grunt) {
     grunt.registerTask('dist', function () {
         grunt.task.run(['clean:package', 'clean:dist']);
 
-        grunt.task.run(['update_json:packageBuild', 'copy:buildPackageBak', 'copy:buildPackageReplace', 'npm-install', 'copy:buildPackageReinit', 'typescript:dist', 'clean:package']);
+        grunt.task.run(['env:build','update_json:packageBuild', 'copy:buildPackageBak', 'copy:buildPackageReplace', 'npm-install', 'copy:buildPackageReinit', 'typescript:dist', 'clean:package']);
     });
 
     grunt.registerTask('heroku', function () {
