@@ -10,6 +10,9 @@ module.exports = function (grunt) {
     grunt.loadNpmTasks('grunt-typescript');
     grunt.loadNpmTasks('grunt-contrib-symlink');
     grunt.loadNpmTasks('grunt-contrib-copy');
+    grunt.loadNpmTasks('grunt-contrib-yuidoc');
+    grunt.loadNpmTasks('grunt-mocha-test');
+    grunt.loadNpmTasks('grunt-mocha-istanbul');
 
     // tasks
     grunt.initConfig({
@@ -22,7 +25,7 @@ module.exports = function (grunt) {
         symlink: {
             // Enable overwrite to delete symlinks before recreating them
             options: {
-                overwrite: false
+                overwrite: true
             },
             // The "build/target.txt" symlink will be created and linked to
             // "source/target.txt". It should appear like this in a file listing:
@@ -31,6 +34,10 @@ module.exports = function (grunt) {
             coreBackend: {
                 src: '<%= coreReposConfig.coreBackendRepoPath %>',
                 dest: 't6s-core/core-backend'
+            },
+            core: {
+                src: '<%= coreReposConfig.coreRepoPath %>',
+                dest: 't6s-core/core-backend/t6s-core/core'
             }
         },
 
@@ -47,7 +54,7 @@ module.exports = function (grunt) {
                 ]
             },
             packageHeroku: {
-              src: ['t6s-core/core-backend/package.json','packageHeroku.json'],
+              src: ['t6s-core/core-backend/package.json','package.json'],
               dest: 'heroku/package.json',
               fields: [
                 'name',
@@ -105,6 +112,12 @@ module.exports = function (grunt) {
                     module: 'commonjs',
                     basePath: 'scripts'
                 }
+            },
+            test: {
+                src: [
+                    'tests/**/*.ts'
+                ],
+                dest: 'build/tests/Test.js'
             }
         },
 
@@ -152,13 +165,33 @@ module.exports = function (grunt) {
 // ---------------------------------------------
 
 // ---------------------------------------------
+//                                 doc tasks
+// ---------------------------------------------
+        yuidoc: {
+            compile: {
+                name: 'The 6th Screen - SourceServer',
+                description: 'Backend for The 6th Screen products.',
+                version: '0.0.1',
+                url: 'http://www.the6thscreen.fr',
+                options: {
+                    extension: '.ts, .js',
+                    paths: ['scripts/'],
+                    outdir: 'doc/'
+                }
+            }
+        },
+// ---------------------------------------------
+
+// ---------------------------------------------
 //                                    clean task
 // ---------------------------------------------
         clean: {
             package: ['package-bak.json', 'package-tmp.json'],
             build: ['build/'],
             heroku: ['heroku/'],
-            dist: ['dist/']
+            dist: ['dist/'],
+            doc: ['doc'],
+            test: ['build/tests/Test.js']
         }
 // ---------------------------------------------
     });
@@ -166,7 +199,9 @@ module.exports = function (grunt) {
     // register tasks
     grunt.registerTask('default', ['build']);
 
-    grunt.registerTask('init', ['symlink']);
+    grunt.registerTask('init', ['symlink:coreBackend']);
+
+    grunt.registerTask('initJenkins', ['init','symlink:core']);
 
     grunt.registerTask('build', function () {
         grunt.task.run(['clean:package', 'clean:build']);
@@ -187,5 +222,20 @@ module.exports = function (grunt) {
     });
 
     grunt.registerTask('develop', ['build', 'express:build', 'watch']);
+
+    grunt.registerTask('doc', ['clean:doc', 'yuidoc']);
+
+    grunt.registerTask('coverage', ['test', 'mochaTest:coverage']);
+    grunt.registerTask('initTest', function() {
+        grunt.task.run(['clean:build']);
+
+        grunt.task.run(['update_json:packageBuild', 'copy:buildPackageBak', 'copy:buildPackageReplace', 'npm-install', 'copy:buildPackageReinit', 'typescript:build', 'typescript:test']);
+    });
+
+
+    grunt.registerTask('coverage', ['initTest', 'mocha_istanbul:coverage']);
+    grunt.registerTask('test', ['initTest', 'mochaTest:test']);
+
+    grunt.registerTask('jenkins', ['initTest', 'mochaTest:jenkins', 'mocha_istanbul:coverage', 'clean:package']);
 
 }
