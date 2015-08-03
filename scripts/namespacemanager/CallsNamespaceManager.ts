@@ -7,6 +7,10 @@
 
 /// <reference path="../../t6s-core/core-backend/scripts/server/NamespaceManager.ts" />
 
+/// <reference path="../../libsdef/socket.io-client.d.ts" />
+
+var socketIOClient = require('socket.io-client');
+
 class CallsNamespaceManager extends NamespaceManager {
 
     /**
