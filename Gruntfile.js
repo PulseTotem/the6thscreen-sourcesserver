@@ -62,17 +62,6 @@ module.exports = function (grunt) {
                     'devDependencies',
                     'overrides'
                 ]
-            },
-            packageHeroku: {
-              src: ['t6s-core/core-backend/package.json','package.json'],
-              dest: 'heroku/package.json',
-              fields: [
-                'name',
-                'version',
-                'dependencies',
-                'devDependencies',
-                'overrides'
-              ]
             }
         },
 // ---------------------------------------------
@@ -89,6 +78,10 @@ module.exports = function (grunt) {
             },
             buildPackageReinit: {
                 files: 	[{'package.json': 'package-bak.json'}]
+            },
+
+            distPackage: {
+              files: 	[{'dist/package.json': 'package.json'}]
             },
 
             heroku: {
@@ -261,13 +254,13 @@ module.exports = function (grunt) {
     grunt.registerTask('dist', function () {
         grunt.task.run(['clean:package', 'clean:dist']);
 
-        grunt.task.run(['env:build','update_json:packageBuild', 'copy:buildPackageBak', 'copy:buildPackageReplace', 'npm-install', 'copy:buildPackageReinit', 'typescript:dist', 'clean:package']);
+        grunt.task.run(['env:build','update_json:packageBuild', 'copy:buildPackageBak', 'copy:buildPackageReplace', 'npm-install', 'copy:distPackage', 'copy:buildPackageReinit', 'typescript:dist', 'clean:package']);
     });
 
     grunt.registerTask('heroku', function () {
       grunt.task.run(['clean:heroku']);
 
-      grunt.task.run(['dist', 'update_json:packageHeroku', 'copy:heroku', 'copy:herokuProcfile', 'copy:herokuGitignore']);
+      grunt.task.run(['dist', 'copy:heroku', 'copy:herokuProcfile', 'copy:herokuGitignore']);
     });
 
     grunt.registerTask('develop', ['build', 'express:build', 'watch']);
