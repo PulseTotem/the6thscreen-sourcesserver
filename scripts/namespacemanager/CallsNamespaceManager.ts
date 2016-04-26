@@ -23,6 +23,33 @@ class CallsNamespaceManager extends NamespaceManager {
     private _callId: number;
 
     /**
+     * Call's SDI id
+     *
+     * @property _sdiId
+     * @private
+     * @type number
+     */
+    private _sdiId : number;
+
+    /**
+     * Call's Profil Id
+     *
+     * @property _profilId
+     * @private
+     * @type number
+     */
+    private _profilId : number;
+
+    /**
+     * Call's Profil hash
+     *
+     * @property _hashProfil
+     * @private
+     * @type string
+     */
+    private _hashProfil : string;
+
+    /**
      * Backend socket.
      *
      * @property _backendSocket
@@ -116,6 +143,9 @@ class CallsNamespaceManager extends NamespaceManager {
 		var self = this;
 
         self._callId = callIdDescription.id;
+        self._sdiId = callIdDescription.sdiId;
+        self._profilId = callIdDescription.profilId;
+        self._hashProfil = callIdDescription.hashProfil;
 
         self._connectToBackend();
     }
@@ -289,6 +319,12 @@ class CallsNamespaceManager extends NamespaceManager {
 
         self._params["serviceLogo"] = self._callDescription.callType.source.service.logo;
         self._params["serviceName"] = self._callDescription.callType.source.service.name;
+
+        self._params["SDI"] = {
+            "id": self._sdiId,
+            "profilId" : self._profilId,
+            "hash": self._hashProfil
+        };
 
 		if(! paramValuesOk) {
 			Logger.error("Error --> A value for paramType is missing...");
