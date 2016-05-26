@@ -50,6 +50,15 @@ class CallsNamespaceManager extends NamespaceManager {
     private _hashProfil : string;
 
     /**
+     * Call's Client IP
+     *
+     * @property _clientIP
+     * @private
+     * @type string
+     */
+    private _clientIP : string;
+
+    /**
      * Backend socket.
      *
      * @property _backendSocket
@@ -146,6 +155,7 @@ class CallsNamespaceManager extends NamespaceManager {
         self._sdiId = callIdDescription.sdiId;
         self._profilId = callIdDescription.profilId;
         self._hashProfil = callIdDescription.hashProfil;
+        self._clientIP = this.getIP();
 
         self._connectToBackend();
     }
@@ -325,6 +335,8 @@ class CallsNamespaceManager extends NamespaceManager {
             "profilId" : self._profilId,
             "hash": self._hashProfil
         };
+
+        self._params["ClientIP"] = self._clientIP;
 
 		if(! paramValuesOk) {
 			Logger.error("Error --> A value for paramType is missing...");
