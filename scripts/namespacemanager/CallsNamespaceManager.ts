@@ -157,6 +157,8 @@ class CallsNamespaceManager extends NamespaceManager {
         self._hashProfil = callIdDescription.hashProfil;
         self._clientIP = this.getIP();
 
+        Logger.debug("IP retrieved: "+self._clientIP);
+
         self._connectToBackend();
     }
 
