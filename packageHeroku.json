@@ -1,7 +1,0 @@
-{
-  "name": "the6thscreen-sourcesserver",
-  "version": "2.0.0",
-  "devDependencies": {
-    "socket.io-client": "1.3.6"
-  }
-}

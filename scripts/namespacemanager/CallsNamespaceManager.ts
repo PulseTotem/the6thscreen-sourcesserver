@@ -7,6 +7,10 @@
 
 /// <reference path="../../t6s-core/core-backend/scripts/server/NamespaceManager.ts" />
 
+/// <reference path="../../libsdef/socket.io-client.d.ts" />
+
+var socketIOClient = require('socket.io-client');
+
 class CallsNamespaceManager extends NamespaceManager {
 
     /**
@@ -17,6 +21,42 @@ class CallsNamespaceManager extends NamespaceManager {
      * @type number
      */
     private _callId: number;
+
+    /**
+     * Call's SDI id
+     *
+     * @property _sdiId
+     * @private
+     * @type number
+     */
+    private _sdiId : number;
+
+    /**
+     * Call's Profil Id
+     *
+     * @property _profilId
+     * @private
+     * @type number
+     */
+    private _profilId : number;
+
+    /**
+     * Call's Profil hash
+     *
+     * @property _hashProfil
+     * @private
+     * @type string
+     */
+    private _hashProfil : string;
+
+    /**
+     * Call's Client IP
+     *
+     * @property _clientIP
+     * @private
+     * @type string
+     */
+    private _clientIP : string;
 
     /**
      * Backend socket.
@@ -112,6 +152,12 @@ class CallsNamespaceManager extends NamespaceManager {
 		var self = this;
 
         self._callId = callIdDescription.id;
+        self._sdiId = callIdDescription.sdiId;
+        self._profilId = callIdDescription.profilId;
+        self._hashProfil = callIdDescription.hashProfil;
+        self._clientIP = this.getIP();
+
+        Logger.debug("IP retrieved: "+self._clientIP);
 
         self._connectToBackend();
     }
@@ -283,8 +329,16 @@ class CallsNamespaceManager extends NamespaceManager {
 			}
 		});
 
-        self._params["serviceLogo"] = self._callDescription.source.service.logo;
-        self._params["serviceName"] = self._callDescription.source.service.name;
+        self._params["serviceLogo"] = self._callDescription.callType.source.service.logo;
+        self._params["serviceName"] = self._callDescription.callType.source.service.name;
+
+        self._params["SDI"] = {
+            "id": self._sdiId,
+            "profilId" : self._profilId,
+            "hash": self._hashProfil
+        };
+
+        self._params["ClientIP"] = self._clientIP;
 
 		if(! paramValuesOk) {
 			Logger.error("Error --> A value for paramType is missing...");
@@ -372,7 +426,13 @@ class CallsNamespaceManager extends NamespaceManager {
 			var completeParams = this._params;
 
 			if (this._callDescription.callType.source.service.oauth) {
-				completeParams["oauthKey"] = this._callDescription.oAuthKey.value;
+                if (this._callDescription.oAuthKey != null) {
+                    completeParams["oauthKey"] = this._callDescription.oAuthKey.value;
+                } else {
+                    Logger.error("An oAuthKey parameter should be assigned to the following call: "+this._callDescription.id);
+                    Logger.debug("Associated service: "+this._callDescription.callType.source.service.name);
+                }
+
 			}
 
 			completeParams["refreshTime"] = this._callDescription.callType.source.refreshTime;
