@@ -425,12 +425,12 @@ class CallsNamespaceManager extends NamespaceManager {
 		if(this._sourceConnectionDescription == null) {
 			var completeParams = this._params;
 
-			if (this._callDescription.callType.source.service.oauth) {
+			if (this._callDescription.callType.source.provider) {
                 if (this._callDescription.oAuthKey != null) {
                     completeParams["oauthKey"] = this._callDescription.oAuthKey.value;
                 } else {
                     Logger.error("An oAuthKey parameter should be assigned to the following call: "+this._callDescription.id);
-                    Logger.debug("Associated service: "+this._callDescription.callType.source.service.name);
+                    Logger.debug("Associated provider: "+this._callDescription.callType.source.provider.name);
                 }
 
 			}
