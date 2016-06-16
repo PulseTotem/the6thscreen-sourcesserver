@@ -1,6 +1,6 @@
 {
-  "name": "the6thscreen-sourcesserver",
-  "version": "3.0.0",
+  "name": "pulsetotem-sourcesserver",
+  "version": "3.1.0",
   "description": "The 6th Screen Sources' Server.",
   "devDependencies": {
     "grunt": "0.4.5",
